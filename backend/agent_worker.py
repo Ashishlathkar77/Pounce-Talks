@@ -54,10 +54,10 @@ _FREIGHT_KEYTERMS = [
 # inbound carrier sales II agent.
 _BLAKE_VOICE_ID = "a167e0f3-df7e-4d52-a9c3-f949145efdab"
 
-# Pronunciation fix for the brand name — Cartesia inline phonemes: "Hemut" =
-# HAY-mut. Applied as a TTS text transform so the spoken audio is right while
-# the transcript still reads "Hemut".
-_PRONUNCIATIONS = {"Hemut": "<<ˈheɪ|m|ʌt>>"}
+# Pronunciation fix for the brand name. IPA phoneme syntax (<<...>>) caused
+# Cartesia to emit a beep; plain phonetic spelling is more reliable.
+# "Haymut" → Cartesia naturally reads as HAY-mut.
+_PRONUNCIATIONS = {"Hemut": "Haymut"}
 try:
     from livekit.agents.voice.transcription.text_transforms import replace as _lk_replace
 except Exception:
