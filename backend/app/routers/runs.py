@@ -91,6 +91,45 @@ async def list_runs(
     }
 
 
+@router.get("/{session_id}/brief")
+async def get_run_brief(session_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Returns a pre-call intelligence card for the prospect attached to this run.
+    Calls GPT-4.1-mini + Clearbit on demand — results are NOT cached (fast enough
+    for the dashboard detail panel open).
+    """
+    from fastapi import HTTPException
+    import uuid as _uuid
+    from app.services.enrichment import generate_brief
+
+    cond = CallLog.livekit_room_name == session_id
+    try:
+        cond = CallLog.id == _uuid.UUID(session_id)
+    except (ValueError, AttributeError, TypeError):
+        pass
+
+    result = await db.execute(
+        select(CallLog, Lead)
+        .outerjoin(Lead, CallLog.lead_id == Lead.id)
+        .where(cond)
+    )
+    row = result.first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    call, lead = row
+    if lead is None:
+        raise HTTPException(status_code=404, detail="No lead attached to this run")
+
+    brief = await generate_brief(
+        name=lead.name,
+        company=lead.company,
+        email=lead.email or "",
+        role=lead.role or "",
+    )
+    return brief
+
+
 @router.get("/{session_id}")
 async def get_run(session_id: str, db: AsyncSession = Depends(get_db)):
     # The runs list returns CallLog.id as the row id, so the detail lookup is

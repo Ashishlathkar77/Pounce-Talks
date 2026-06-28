@@ -347,6 +347,21 @@ class PounceAgent(Agent):
 
 # ── Call outcome finalization ─────────────────────────────────────────────────
 
+async def _push_live_event(call_log_id: str, event: dict) -> None:
+    """Fire-and-forget: send a live event to the SSE broadcaster via HTTP."""
+    if not call_log_id:
+        return
+    import httpx as _httpx
+    try:
+        async with _httpx.AsyncClient(timeout=2.0) as client:
+            await client.post(
+                f"{settings.webhook_base_url}/api/webhook/calls/{call_log_id}/live-event",
+                json=event,
+            )
+    except Exception as exc:
+        log.debug("live_push_failed", error=str(exc))
+
+
 async def _post_call_outcome(state, outcome: str) -> None:
     """
     Idempotently POST the call outcome + captured transcript to the webhook.
@@ -791,12 +806,34 @@ async def entrypoint(ctx: JobContext) -> None:
                 "text": text,
                 "ts": round(_time.monotonic() - _call_t0, 2),
             })
+            # Push to live monitor in real time
+            import time as _t2
+            asyncio.create_task(_push_live_event(state.call_log_id, {
+                "type": "transcript_turn",
+                "session_id": ctx.room.name,
+                "role": "agent" if role == "assistant" else "caller",
+                "text": text,
+                "ts": str(_t2.time()),
+            }))
         except Exception as exc:  # never let transcript capture break the call
             log.debug("transcript_capture_failed", error=str(exc))
 
     session.on("conversation_item_added", _on_conversation_item)
 
     await session.start(agent, room=ctx.room)
+
+    # Announce call_started to Live Monitor
+    import time as _ts
+    asyncio.create_task(_push_live_event(state.call_log_id, {
+        "type": "call_started",
+        "session_id": ctx.room.name,
+        "agent_type": "sdr",
+        "direction": "outbound",
+        "caller_phone": state.phone,
+        "prospect_name": state.name,
+        "prospect_company": state.company,
+        "ts": str(_ts.time()),
+    }))
 
     # Continuous call-center ambience — separate track, always on (hevox parity).
     bg_audio_state: dict = {"task": None, "track": None}
@@ -823,9 +860,18 @@ async def entrypoint(ctx: JobContext) -> None:
     # Fallback finalizer — if the caller hangs up before the agent calls
     # end_call, still persist the transcript + a derived outcome to the Runs tab.
     async def _finalize_call() -> None:
+        outcome = _derive_outcome(state)
+        import time as _tf
+        await _push_live_event(state.call_log_id, {
+            "type": "call_ended",
+            "session_id": ctx.room.name,
+            "outcome": outcome,
+            "duration_sec": round(_tf.monotonic() - _call_t0),
+            "ts": str(_tf.time()),
+        })
         if state.outcome_posted:
             return
-        await _post_call_outcome(state, _derive_outcome(state))
+        await _post_call_outcome(state, outcome)
 
     ctx.add_shutdown_callback(_finalize_call)
 

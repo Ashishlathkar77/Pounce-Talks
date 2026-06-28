@@ -95,6 +95,17 @@ async def lead_intent(
     }
 
 
+@router.post("/calls/{call_log_id}/live-event")
+async def push_live_event(call_log_id: str, body: dict):
+    """
+    Called by the agent_worker (fire-and-forget) to push a real-time event to
+    all connected Live Monitor SSE clients. Accepts any LiveEvent JSON payload.
+    """
+    from app.routers.live import broadcast
+    broadcast(body)
+    return {"ok": True}
+
+
 @router.post("/calls/{call_log_id}/outcome")
 async def call_outcome(
     call_log_id: str,

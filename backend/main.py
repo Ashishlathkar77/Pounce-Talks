@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import create_all_tables
-from app.routers import agents, analytics, campaigns, leads, orange_slice, runs, twiml, webhook
+from app.routers import agents, analytics, campaigns, leads, live, orange_slice, runs, twiml, webhook
 
 log = structlog.get_logger(__name__)
 
@@ -62,6 +62,7 @@ app.include_router(agents.router)
 app.include_router(analytics.router)
 app.include_router(campaigns.router)
 app.include_router(leads.router)
+app.include_router(live.router)
 app.include_router(orange_slice.router)
 app.include_router(runs.router)
 app.include_router(twiml.router)
