@@ -434,8 +434,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const nav = BASE_NAV;
 
-  function handleLogout() {
-    window.location.href = "/campaigns";
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    window.location.href = "/login";
   }
 
   function handleNav(key: string) {
