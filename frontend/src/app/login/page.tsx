@@ -158,8 +158,8 @@ export default function LoginPage() {
               Books the demo.
             </span>
           </h1>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: "0 0 48px", maxWidth: 400 }}>
-            AI outbound SDR built for freight — dials your prospects, qualifies live, and books demos into your calendar. No human effort.
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.72)", lineHeight: 1.7, margin: "0 0 48px", maxWidth: 400 }}>
+            Pounce dials your prospects, qualifies them live on the phone, and books demos automatically — no human SDR needed.
           </p>
 
           {/* 3 key stats from research */}
@@ -174,24 +174,24 @@ export default function LoginPage() {
                 borderRight: i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none",
               }}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-0.04em", marginBottom: 6 }}>{s.num}</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.45, marginBottom: 8 }}>{s.label}</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.02em" }}>{s.src}</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.45, marginBottom: 8 }}>{s.label}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", letterSpacing: "0.02em" }}>{s.src}</div>
               </div>
             ))}
           </div>
 
           {/* Competitive edge — one line */}
           <div style={{ marginTop: 20, padding: "14px 18px", borderRadius: 10, background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.18)" }}>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
-              <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>Unoccupied space: </span>
-              HappyRobot and Parade.ai cover inbound only. 11x/Artisan handle email. Nobody owns outbound freight broker → shipper prospecting.{" "}
-              <span style={{ color: "#818cf8" }}>That&apos;s Pounce.</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
+              <span style={{ color: "#fff", fontWeight: 600 }}>Unoccupied space: </span>
+              HappyRobot and Parade.ai cover inbound only. 11x and Artisan do email — no real voice, no domain depth. Nobody owns AI-native outbound voice SDR.{" "}
+              <span style={{ color: "#818cf8", fontWeight: 600 }}>That&apos;s Pounce.</span>
             </span>
           </div>
         </div>
 
         {/* Footer */}
-        <div style={{ position: "relative", zIndex: 1, fontSize: 11, color: "rgba(255,255,255,0.18)", letterSpacing: "0.04em" }}>
+        <div style={{ position: "relative", zIndex: 1, fontSize: 11, color: "rgba(255,255,255,0.38)", letterSpacing: "0.06em" }}>
           POUNCE · AI OUTBOUND SDR
         </div>
       </div>
@@ -218,7 +218,7 @@ export default function LoginPage() {
             </Suspense>
           </div>
 
-          <p style={{ textAlign: "center", fontSize: 11, color: "#d4d4d8", marginTop: 20 }}>
+          <p style={{ textAlign: "center", fontSize: 11, color: "#a1a1aa", marginTop: 20 }}>
             Protected · Session expires in 7 days
           </p>
         </div>
