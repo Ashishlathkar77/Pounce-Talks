@@ -325,7 +325,7 @@ export default function LoginPage() {
 
         {/* ── LEFT — brand panel ──────────────────────────────────────────── */}
         <div style={{
-          flex: "0 0 52%",
+          flex: "0 0 75%",
           background: "#09090b",
           display: "flex", flexDirection: "column", justifyContent: "space-between",
           padding: "44px 56px",
@@ -434,7 +434,7 @@ export default function LoginPage() {
           flex: 1,
           background: "#0d1117",
           display: "flex", alignItems: "center", justifyContent: "center",
-          padding: "48px 40px",
+          padding: "32px 24px",
           position: "relative",
         }}>
           {/* Subtle scanlines texture */}
@@ -443,7 +443,7 @@ export default function LoginPage() {
             background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)",
           }} />
 
-          <div style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: 1 }}>
+          <div style={{ width: "100%", maxWidth: 360, position: "relative", zIndex: 1 }}>
             {/* Terminal window */}
             <div style={{
               background: "#0a0f14",
