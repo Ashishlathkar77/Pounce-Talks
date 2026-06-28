@@ -15,16 +15,16 @@ import {
 const MAX_LEADS = 10;
 
 // Shared column template for the leads table (header + rows must match).
-// checkbox | edit | Name | Company | Phone | Email | Location | Employees | Status | Score
-const LEAD_GRID = "44px 36px 1.2fr 1.2fr 1.15fr 1.3fr 1.1fr 92px 104px 58px";
+// checkbox | Name | Company | Phone | Email | Location | Employees | Status | Score | edit
+const LEAD_GRID = "40px 1.2fr 1.2fr 1.15fr 1.3fr 1.1fr 88px 100px 54px 40px";
 
 // Visible vertical column divider + a full-height cell wrapper so the line
-// spans the whole row/header.
+// spans the whole row/header. Packed: tight padding.
 const COL_LINE = "1px solid var(--border-neutral-secondary)";
 const LEAD_CELL: React.CSSProperties = {
   height: "100%", minWidth: 0,
   display: "flex", alignItems: "center",
-  padding: "0 10px",
+  padding: "0 8px",
 };
 import { Tag } from "@hemut2025/design-system";
 import Link from "next/link";
@@ -271,12 +271,13 @@ function NextActionCard({
 // ── Inline editable cell ──────────────────────────────────────────────────────
 
 function EditableCell({
-  value, placeholder, mono, center, inputId, onSave,
+  value, placeholder, mono, center, editing, inputId, onSave,
 }: {
   value: string;
   placeholder?: string;
   mono?: boolean;
   center?: boolean;
+  editing?: boolean;
   inputId?: string;
   onSave: (next: string) => void;
 }) {
@@ -285,10 +286,28 @@ function EditableCell({
   const [lastValue, setLastValue] = useState(value);
   if (value !== lastValue) { setLastValue(value); setDraft(value); }
 
+  // Locked (default) — render plain text; unlock the row via the pencil to edit.
+  if (!editing) {
+    return (
+      <span style={{
+        display: "block", width: "100%",
+        fontSize: 13,
+        fontFamily: mono ? "var(--font-mono, monospace)" : "inherit",
+        fontVariantNumeric: mono ? "tabular-nums" : undefined,
+        color: value ? "var(--text-neutral-primary)" : "var(--text-neutral-secondary)",
+        textAlign: center ? "center" : "left",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {value || placeholder || "—"}
+      </span>
+    );
+  }
+
   const dirty = draft !== value;
   return (
     <input
       id={inputId}
+      autoFocus={!!inputId}
       value={draft}
       placeholder={placeholder}
       onChange={(e) => setDraft(e.target.value)}
@@ -343,7 +362,16 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const [findingLeads, setFindingLeads] = useState(false);
   const [findResult, setFindResult] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingRows, setEditingRows] = useState<Set<string>>(new Set());
   const [calling, setCalling] = useState(false);
+
+  function toggleEditRow(leadId: string) {
+    setEditingRows((prev) => {
+      const next = new Set(prev);
+      next.has(leadId) ? next.delete(leadId) : next.add(leadId);
+      return next;
+    });
+  }
 
   const { data: campaign, mutate: mutateCam } = useSWR<Campaign>(
     `/api/campaigns/${id}`,
@@ -751,9 +779,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           <div style={{
             display: "grid",
             gridTemplateColumns: LEAD_GRID,
-            minWidth: 1020,
-            padding: "0 16px",
-            height: 40,
+            minWidth: 1010,
+            padding: "0 14px",
+            height: 36,
             background: "var(--bg-neutral-secondary)",
             borderBottom: COL_LINE,
             alignItems: "stretch",
@@ -761,11 +789,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             <div style={{ ...LEAD_CELL, justifyContent: "center", borderRight: COL_LINE }}>
               <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
             </div>
-            <div style={{ ...LEAD_CELL, justifyContent: "center", borderRight: COL_LINE, padding: 0 }}>
-              <Pencil style={{ width: 12, height: 12, color: "var(--text-neutral-secondary)" }} />
-            </div>
-            {["Name", "Company", "Phone", "Email", "Location", "Employees", "Status", "Score"].map((h, i, arr) => (
-              <div key={h} style={{ ...LEAD_CELL, justifyContent: "center", borderRight: i < arr.length - 1 ? COL_LINE : "none" }}>
+            {["Name", "Company", "Phone", "Email", "Location", "Employees", "Status", "Score"].map((h) => (
+              <div key={h} style={{ ...LEAD_CELL, justifyContent: "center", borderRight: COL_LINE }}>
                 <span style={{
                   fontSize: 11, fontWeight: 700, letterSpacing: "0.05em",
                   textTransform: "uppercase", color: "var(--text-neutral-secondary)",
@@ -775,6 +800,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 </span>
               </div>
             ))}
+            <div style={{ ...LEAD_CELL, justifyContent: "center", padding: 0 }}>
+              <Pencil style={{ width: 12, height: 12, color: "var(--text-neutral-secondary)" }} />
+            </div>
           </div>
 
           {/* ── Rows ── */}
@@ -783,6 +811,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             const isCalling  = lead.status === "calling";
             const isBooked   = lead.status === "meeting_booked";
             const isSelected = selected.has(lead.id);
+            const isEdit     = editingRows.has(lead.id);
 
             // status → DS Tag variant
             const tagVariant = (
@@ -805,12 +834,13 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 style={{
                   display: "grid",
                   gridTemplateColumns: LEAD_GRID,
-                  minWidth: 1020,
-                  padding: "0 16px",
-                  height: 52,
+                  minWidth: 1010,
+                  padding: "0 14px",
+                  height: 42,
                   cursor: "pointer",
                   borderBottom: i < leads.length - 1 ? COL_LINE : "none",
-                  background: isSelected ? "rgba(255,211,59,0.06)"
+                  background: isEdit ? "rgba(255,211,59,0.05)"
+                             : isSelected ? "rgba(255,211,59,0.06)"
                              : isCalling ? "rgba(255,211,59,0.03)"
                              : isBooked ? "rgba(34,197,94,0.03)"
                              : "transparent",
@@ -823,61 +853,40 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   <Checkbox checked={isSelected} onChange={() => toggleOne(lead.id)} />
                 </div>
 
-                {/* Edit affordance — focuses the row's first editable field */}
-                <div style={{ ...LEAD_CELL, justifyContent: "center", borderRight: COL_LINE, padding: 0 }}>
-                  <button
-                    title="Edit this lead"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      document.getElementById(`lead-name-${lead.id}`)?.focus();
-                    }}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      width: 24, height: 24, borderRadius: 6, cursor: "pointer",
-                      background: "transparent", border: "1px solid var(--border-neutral-subtle)",
-                      color: "var(--text-neutral-secondary)",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,211,59,0.12)"; e.currentTarget.style.color = "#FFD33B"; e.currentTarget.style.borderColor = "rgba(255,211,59,0.4)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-neutral-secondary)"; e.currentTarget.style.borderColor = "var(--border-neutral-subtle)"; }}
-                  >
-                    <Pencil style={{ width: 12, height: 12 }} />
-                  </button>
-                </div>
-
-                {/* Name (editable) */}
+                {/* Name */}
                 <div style={{ ...LEAD_CELL, borderRight: COL_LINE }} onClick={(e) => e.stopPropagation()}>
-                  <EditableCell value={lead.name || ""} placeholder="Name" center
+                  <EditableCell value={lead.name || ""} placeholder="Name" center editing={isEdit}
                     inputId={`lead-name-${lead.id}`}
                     onSave={(v) => updateLeadField(lead.id, "name", v)} />
                 </div>
 
-                {/* Company (editable) */}
+                {/* Company */}
                 <div style={{ ...LEAD_CELL, borderRight: COL_LINE }} onClick={(e) => e.stopPropagation()}>
-                  <EditableCell value={lead.company || ""} placeholder="Company" center
+                  <EditableCell value={lead.company || ""} placeholder="Company" center editing={isEdit}
                     onSave={(v) => updateLeadField(lead.id, "company", v)} />
                 </div>
 
-                {/* Phone (editable) */}
+                {/* Phone */}
                 <div style={{ ...LEAD_CELL, borderRight: COL_LINE }} onClick={(e) => e.stopPropagation()}>
-                  <EditableCell value={lead.phone || ""} placeholder="+1… add #" mono center
+                  <EditableCell value={lead.phone || ""} placeholder="+1… add #" mono center editing={isEdit}
                     onSave={(v) => updateLeadField(lead.id, "phone", v)} />
                 </div>
 
-                {/* Email / Website (editable) */}
+                {/* Email / Website */}
                 <div style={{ ...LEAD_CELL, borderRight: COL_LINE }} onClick={(e) => e.stopPropagation()}>
-                  <EditableCell value={lead.email || ""} placeholder="Email / site" center
+                  <EditableCell value={lead.email || ""} placeholder="Email / site" center editing={isEdit}
                     onSave={(v) => updateLeadField(lead.id, "email", v)} />
                 </div>
 
-                {/* Location (role, editable) */}
+                {/* Location (role) */}
                 <div style={{ ...LEAD_CELL, borderRight: COL_LINE }} onClick={(e) => e.stopPropagation()}>
-                  <EditableCell value={lead.role || ""} placeholder="Location" center
+                  <EditableCell value={lead.role || ""} placeholder="Location" center editing={isEdit}
                     onSave={(v) => updateLeadField(lead.id, "role", v)} />
                 </div>
 
-                {/* Employees (notes, editable) */}
+                {/* Employees (notes) */}
                 <div style={{ ...LEAD_CELL, borderRight: COL_LINE }} onClick={(e) => e.stopPropagation()}>
-                  <EditableCell value={lead.notes || ""} placeholder="—" mono center
+                  <EditableCell value={lead.notes || ""} placeholder="—" mono center editing={isEdit}
                     onSave={(v) => updateLeadField(lead.id, "notes", v)} />
                 </div>
 
@@ -898,7 +907,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 </div>
 
                 {/* Score */}
-                <div style={{ ...LEAD_CELL, justifyContent: "center" }}>
+                <div style={{ ...LEAD_CELL, justifyContent: "center", borderRight: COL_LINE }}>
                   {lead.qualification_score !== null && lead.qualification_score !== undefined ? (
                     <span style={{
                       fontSize: 13, fontWeight: 700,
@@ -913,6 +922,25 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   ) : (
                     <span style={{ fontSize: 13, color: "var(--text-neutral-secondary)" }}>—</span>
                   )}
+                </div>
+
+                {/* Edit toggle — unlocks/locks the whole row */}
+                <div style={{ ...LEAD_CELL, justifyContent: "center", padding: 0 }}>
+                  <button
+                    title={isEdit ? "Done editing" : "Edit this lead"}
+                    onClick={(e) => { e.stopPropagation(); toggleEditRow(lead.id); }}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 24, height: 24, borderRadius: 6, cursor: "pointer",
+                      background: isEdit ? "rgba(255,211,59,0.18)" : "transparent",
+                      border: `1px solid ${isEdit ? "rgba(255,211,59,0.5)" : "var(--border-neutral-subtle)"}`,
+                      color: isEdit ? "#FFD33B" : "var(--text-neutral-secondary)",
+                    }}
+                    onMouseEnter={(e) => { if (!isEdit) { e.currentTarget.style.background = "rgba(255,211,59,0.12)"; e.currentTarget.style.color = "#FFD33B"; e.currentTarget.style.borderColor = "rgba(255,211,59,0.4)"; } }}
+                    onMouseLeave={(e) => { if (!isEdit) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-neutral-secondary)"; e.currentTarget.style.borderColor = "var(--border-neutral-subtle)"; } }}
+                  >
+                    {isEdit ? <CheckCircle2 style={{ width: 13, height: 13 }} /> : <Pencil style={{ width: 12, height: 12 }} />}
+                  </button>
                 </div>
               </motion.div>
             );
