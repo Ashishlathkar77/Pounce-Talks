@@ -476,8 +476,13 @@ async def _fetch_calcom_slots(preferred_time: str, preferred_date: str = "") -> 
     try:
         if preferred_date:
             pd = datetime.date.fromisoformat(preferred_date.strip()[:10])
-            if pd >= now.date():
-                start_date = pd
+            # LLM sometimes sends the wrong year (e.g. 2024 instead of 2026).
+            # Fix: if the date is in the past, bump to current year, then next year.
+            if pd < now.date():
+                pd = pd.replace(year=now.year)
+            if pd < now.date():
+                pd = pd.replace(year=now.year + 1)
+            start_date = pd
     except Exception:
         pass
 

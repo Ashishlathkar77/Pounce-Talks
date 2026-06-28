@@ -15,8 +15,6 @@ import type { TagProps } from "@hemut2025/design-system";
 import { ActiveCall, LiveEvent, LiveTranscriptTurn } from "@/lib/types";
 import { formatPhoneNumber, humanizeTranscript } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 function formatElapsed(startedAt: string): string {
   const secs = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
   const m = Math.floor(secs / 60).toString().padStart(2, "0");
@@ -237,14 +235,10 @@ export default function LivePage() {
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    // EventSource doesn't support custom headers, so we pass the token as a query param
-    let url = `${API_BASE}/api/live/calls`;
-    try {
-      const raw = localStorage.getItem("converse_auth");
-      const token = raw ? JSON.parse(raw)?.state?.token : localStorage.getItem("converse_token");
-      if (token) url += `?token=${encodeURIComponent(token)}`;
-    } catch { /* ignore */ }
-    const es = new EventSource(url);
+    // Use a relative URL so Next.js rewrites proxy to the FastAPI backend.
+    // Direct NEXT_PUBLIC_API_URL bypasses the proxy and breaks in prod (SSE
+    // goes to localhost:8000 if the env var is missing in Vercel).
+    const es = new EventSource("/api/live/calls");
     esRef.current = es;
 
     es.onopen = () => setConnected(true);
