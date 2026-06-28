@@ -6,7 +6,7 @@ Run as a separate process from FastAPI:
     python agent_worker.py start    # production
 
 This worker connects to the Claivon LiveKit cluster, listens for new rooms,
-and runs the Alex SDR agent inside each room.
+and runs the Paul SDR agent inside each room.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ _BLAKE_VOICE_ID = "a167e0f3-df7e-4d52-a9c3-f949145efdab"
 
 class PounceAgent(Agent):
     """
-    Alex — Pounce outbound SDR agent.
+    Paul — Pounce outbound SDR agent.
     State is stored per-instance so every call has isolated state.
     """
 
@@ -69,18 +69,20 @@ class PounceAgent(Agent):
         self._t0: float | None = None        # set in entrypoint (call start)
         self._hangup = None                   # set in entrypoint; ends the SIP call
 
-    def _record_tool(self, name: str, detail: str = "") -> None:
+    def _record_tool(self, name: str, args: dict | None = None, output=None) -> None:
         """Append a tool-call marker to the transcript so the Runs view shows
-        exactly which tool fired, when, and what it did."""
+        exactly which tool fired, when, with what INPUT, and the OUTPUT."""
         import time as _t
         ts = round((_t.monotonic() - self._t0), 2) if self._t0 else 0.0
         self._state.transcript.append({
             "role": "tool",
             "tool": name,
-            "text": f"{name}({detail})" if detail else f"{name}()",
+            "args": args or {},
+            "result": {"output": output, "success": True} if output is not None
+                      else {"success": True},
             "ts": ts,
         })
-        log.info("tool_call", tool=name, detail=detail, lead_id=self._state.lead_id)
+        log.info("tool_call", tool=name, args=args, lead_id=self._state.lead_id)
 
     # ── Tool 1: load_lead_context ─────────────────────────────────────────────
 
@@ -91,7 +93,7 @@ class PounceAgent(Agent):
         MUST be the first tool called. Returns lead info as a summary string.
         """
         self._state.lead_loaded = True
-        self._record_tool("load_lead_context", self._state.name)
+        self._record_tool("load_lead_context", {}, output={"name": self._state.name, "company": self._state.company})
         return (
             f"Lead loaded — Name: {self._state.name}, "
             f"Company: {self._state.company}, "
@@ -122,7 +124,7 @@ class PounceAgent(Agent):
             setattr(self._state, slot, answer)
         else:
             log.warning("unknown_qual_question", question=question)
-        self._record_tool("log_qualification_answer", f"{question}={answer[:40]}")
+        self._record_tool("log_qualification_answer", {"question": question, "answer": answer})
 
         async def _fire() -> None:
             try:
@@ -152,7 +154,7 @@ class PounceAgent(Agent):
 
         self._state.qualification_score = score
         self._state.qualification_complete = True
-        self._record_tool("qualify_lead", f"score={score}")
+        self._record_tool("qualify_lead", {"score": score, "summary": summary}, output={"qualified": score >= 5})
 
         if score >= 5:
             return (
@@ -167,38 +169,46 @@ class PounceAgent(Agent):
     # ── Tool 4: book_meeting ──────────────────────────────────────────────────
 
     @function_tool
-    async def book_meeting(self, preferred_time: str) -> str:
+    async def book_meeting(self, preferred_time: str = "", preferred_date: str = "") -> str:
         """
-        Fetch available meeting slots and return 2 options to the prospect.
+        Fetch available demo slots AROUND the date the prospect asked for.
         Gate-protected: requires qualification_complete AND score >= 5.
-        preferred_time: e.g. 'tomorrow afternoon' or 'Monday morning'
+        preferred_time: their spoken preference, e.g. 'afternoon', 'July 2nd'.
+        preferred_date: that date as YYYY-MM-DD (convert it yourself). Slots are
+            fetched starting from this date, so honor what they asked for.
         """
         ok, reason = self._state.can_book_meeting()
         if not ok:
             return f"Cannot book meeting: {reason}."
 
-        slots = await _fetch_calcom_slots(preferred_time)
+        slots = await _fetch_calcom_slots(preferred_time, preferred_date)
         self._state._available_slots = slots
-        self._record_tool("book_meeting", f"prefers '{preferred_time}', {len(slots)} slots")
+        self._record_tool(
+            "book_meeting",
+            {"preferred_time": preferred_time, "preferred_date": preferred_date},
+            output={"slots": [s.get("label") for s in slots]},
+        )
 
         if not slots:
             return (
-                "I wasn't able to pull up specific times right now. "
-                "What's the best email for you, and I'll have our team lock a time?"
+                f"Hmm, nothing's opening up around {preferred_time or 'then'}. "
+                "Want me to check a different day, or should I have the team email you?"
             )
 
+        # If we have a real email on file, fold it into the ask so we don't ask blind.
+        email_hint = (
+            f" I've got your email as {self._state.email}—still good?"
+            if "@" in (self._state.email or "") else
+            " What's the best email for the invite?"
+        )
         option_a = slots[0]["label"]
         option_b = slots[1]["label"] if len(slots) > 1 else None
-
         if option_b:
             return (
-                f"Two options: A is {option_a}, B is {option_b}. Which works better? "
-                f"And what's the best email for the invite? Then I'll call confirm_meeting."
+                f"Okay, around then I've got {option_a} or {option_b}. "
+                f"Which works better?{email_hint} Then I'll lock it in with confirm_meeting."
             )
-        return (
-            f"I've got {option_a}. Does that work? If so, what's your email and "
-            f"I'll confirm it."
-        )
+        return f"Okay, I've got {option_a}. Work for you?{email_hint}"
 
     # ── Tool 5: confirm_meeting ───────────────────────────────────────────────
 
@@ -213,6 +223,10 @@ class PounceAgent(Agent):
         ok, reason = self._state.can_book_meeting()
         if not ok:
             return f"Cannot book meeting: {reason}."
+
+        # Fall back to a real on-file email if the agent didn't capture one.
+        if "@" not in (email or "") and "@" in (self._state.email or ""):
+            email = self._state.email
 
         slots = self._state._available_slots or []
         chosen = None
@@ -239,7 +253,7 @@ class PounceAgent(Agent):
         self._state.agreed_meeting_time = label
         self._state.meeting_link = link or ""
         self._state.meeting_booked = True
-        self._record_tool("confirm_meeting", f"{label} / {email}")
+        self._record_tool("confirm_meeting", {"slot_choice": slot_choice, "email": email}, output={"booked": label, "link": link})
 
         link_line = f" The invite is on its way to {email}." if link else \
                     f" Our team will email the invite to {email}."
@@ -257,7 +271,7 @@ class PounceAgent(Agent):
         ALWAYS call this — it is required to close out every call.
         outcome: One of qualified | not_qualified | meeting_booked | no_answer | failed
         """
-        self._record_tool("end_call", f"outcome={outcome}")
+        self._record_tool("end_call", {"outcome": outcome})
 
         # Persist the result, then hang up the SIP line after the goodbye plays.
         asyncio.create_task(_post_call_outcome(self._state, outcome))
@@ -381,16 +395,30 @@ async def _create_calcom_booking(start, email: str, name: str, company: str) -> 
 
 # ── Cal.com slot fetcher ──────────────────────────────────────────────────────
 
-async def _fetch_calcom_slots(preferred_time: str) -> list[dict]:
-    """Fetch available Cal.com slots (API v2), or fall back to mock."""
+async def _fetch_calcom_slots(preferred_time: str, preferred_date: str = "") -> list[dict]:
+    """
+    Fetch available Cal.com slots (API v2) starting from the date the prospect
+    asked for, or fall back to mock. Returns up to 2 options, spread across days
+    so we don't only ever offer the first day's earliest two times.
+    """
     import datetime, httpx
 
     if not settings.calcom_api_key or not settings.calcom_event_type_id:
         log.info("calcom_not_configured_using_mock")
         return _mock_slots()
 
+    now = datetime.datetime.now(datetime.timezone.utc)
+    # Honor the requested date when it parses and isn't in the past.
+    start_date = now.date()
     try:
-        now = datetime.datetime.now(datetime.timezone.utc)
+        if preferred_date:
+            pd = datetime.date.fromisoformat(preferred_date.strip()[:10])
+            if pd >= now.date():
+                start_date = pd
+    except Exception:
+        pass
+
+    try:
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.get(
                 "https://api.cal.com/v2/slots",
@@ -400,29 +428,47 @@ async def _fetch_calcom_slots(preferred_time: str) -> list[dict]:
                 },
                 params={
                     "eventTypeId": settings.calcom_event_type_id,
-                    "start": now.date().isoformat(),
-                    "end": (now + datetime.timedelta(days=7)).date().isoformat(),
+                    "start": start_date.isoformat(),
+                    "end": (start_date + datetime.timedelta(days=10)).isoformat(),
                     "timeZone": "America/Chicago",
                 },
             )
             resp.raise_for_status()
             data = (resp.json() or {}).get("data") or {}
 
-        # data is { "YYYY-MM-DD": [ {"start": "ISO"} , ... ], ... }
-        raw: list[str] = []
-        for day in sorted(data.keys()):
-            for slot in data[day]:
-                s = slot.get("start") if isinstance(slot, dict) else slot
-                if s:
-                    raw.append(s)
-            if len(raw) >= 4:
-                break
+        # data is { "YYYY-MM-DD": [ {"start": ISO}, ... ], ... }. Offer a midday
+        # slot from the requested day, then one from a later day, for variety.
+        days = sorted(data.keys())
+        if not days:
+            return _mock_slots()
 
-        if not raw:
+        def _pick(day_slots: list) -> str | None:
+            starts = [(s.get("start") if isinstance(s, dict) else s) for s in day_slots]
+            starts = [s for s in starts if s]
+            if not starts:
+                return None
+            return starts[len(starts) // 2]  # roughly midday, not the 6am slot
+
+        picks: list[str] = []
+        first = _pick(data[days[0]])
+        if first:
+            picks.append(first)
+        for d in days[1:]:
+            nxt = _pick(data[d])
+            if nxt:
+                picks.append(nxt); break
+        if len(picks) < 2:  # only one day had slots — take a second from it
+            for s in data[days[0]]:
+                val = s.get("start") if isinstance(s, dict) else s
+                if val and val not in picks:
+                    picks.append(val)
+                    if len(picks) >= 2:
+                        break
+        if not picks:
             return _mock_slots()
 
         formatted = []
-        for start_str in raw[:2]:
+        for start_str in picks[:2]:
             try:
                 dt = datetime.datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                 label = dt.strftime("%A, %B %-d at %-I:%M %p CT")
@@ -532,6 +578,7 @@ async def entrypoint(ctx: JobContext) -> None:
         company=metadata.get("company", "your company"),
         phone=metadata.get("phone", ""),
         role=metadata.get("role", ""),
+        email=metadata.get("email", ""),
         call_log_id=metadata.get("call_log_id", ""),
     )
 

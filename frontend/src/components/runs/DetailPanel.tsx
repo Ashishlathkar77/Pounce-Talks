@@ -901,7 +901,8 @@ export function RunDetailPanel({
 
   const call = data;
   const rawTranscript = (data.transcript ?? []) as unknown as Array<{
-    role: string; text: string; ts: string | number; tool?: string;
+    role: string; text?: string; ts: string | number;
+    tool?: string; args?: Record<string, unknown>; result?: Record<string, unknown>;
   }>;
 
   // Spoken turns (user/agent). role="tool" markers are split out below so they
@@ -911,11 +912,11 @@ export function RunDetailPanel({
     .map((t, i) => ({
       id: String(i), turn: i,
       role: (t.role === "assistant" ? "agent" : t.role === "user" ? "caller" : t.role) as "agent" | "caller",
-      text: t.text, ts: t.ts,
+      text: t.text ?? "", ts: t.ts,
     }));
 
-  // Tool-call markers captured during the call (which tool fired, when, args),
-  // merged with any structured tool_calls the backend provides.
+  // Tool-call markers captured during the call (which tool fired, when, the
+  // INPUT args, and the OUTPUT), merged with any structured tool_calls.
   const toolCalls: ToolCall[] = [
     ...rawTranscript
       .filter((t) => t.role === "tool")
@@ -923,7 +924,8 @@ export function RunDetailPanel({
         id: `tool-${i}`,
         tool: t.tool || "tool",
         ts: t.ts,
-        result: { detail: t.text, success: true },
+        args: t.args ?? {},
+        result: t.result ?? { success: true },
       })) as unknown as ToolCall[],
     ...((data.tool_calls ?? []) as ToolCall[]),
   ];
@@ -933,8 +935,24 @@ export function RunDetailPanel({
   const totalSteps = transcript.length + toolCalls.length;
 
   const agentMsgs = transcript.filter((t) => t.role === "agent").length;
-  const negotiationRounds = call.negotiation_rounds ?? call.offer_attempts ?? null;
   const agentLabel = call.agent_name || (call.agent_type ? agentTypeLabel(call.agent_type) : null);
+
+  // SDR-specific derived analytics (from the call + captured tool calls).
+  const callX = call as unknown as {
+    agreed_meeting_time?: string; prospect_email?: string;
+    meeting_link?: string; lead_company?: string; qualification_score?: number | null;
+  };
+  const qualAnswers = toolCalls
+    .filter((t) => t.tool === "log_qualification_answer")
+    .map((t) => t.args as { question?: string; answer?: string });
+  const qualifyTool = toolCalls.find((t) => t.tool === "qualify_lead");
+  const qualScore =
+    (qualifyTool?.args as { score?: number } | undefined)?.score ??
+    callX.qualification_score ?? null;
+  const QLABEL: Record<string, string> = {
+    team_size: "Team size", current_process: "Current process",
+    decision_maker: "Decision maker",
+  };
 
   const TAB_ITEMS: TabItem[] = [
     { id: "details",   label: "Details" },
@@ -1018,28 +1036,39 @@ export function RunDetailPanel({
               </AnalyticsSection>
 
               <DetailGroup
-                icon="robot"
-                title="Agent data"
+                icon="target"
+                title="Outcome & qualification"
                 items={[
-                  { label: "Session duration", value: formatDuration(durationSec) },
-                  ...(negotiationRounds != null ? [{ label: "Negotiation rounds", value: String(negotiationRounds) }] : []),
-                  ...(agentLabel ? [{ label: "Agent", value: agentLabel }] : []),
-                  { label: "Direction", value: call.direction === "inbound" ? "Inbound" : "Outbound" },
+                  ...(classification ? [{ label: "Outcome", value: classification.replace(/_/g, " ") }] : []),
+                  { label: "Qualification score", value: qualScore != null ? `${qualScore}/10` : "—" },
+                  ...qualAnswers.map((q) => ({
+                    label: QLABEL[q.question ?? ""] ?? (q.question ?? "Answer"),
+                    value: q.answer ?? "—",
+                  })),
                 ]}
               />
 
+              {(callX.agreed_meeting_time || callX.meeting_link || callX.prospect_email) && (
+                <DetailGroup
+                  icon="calendar-check"
+                  title="Meeting booked"
+                  items={[
+                    ...(callX.agreed_meeting_time ? [{ label: "Time", value: callX.agreed_meeting_time }] : []),
+                    ...(callX.prospect_email ? [{ label: "Email", value: callX.prospect_email }] : []),
+                    ...(callX.meeting_link ? [{ label: "Invite", value: callX.meeting_link }] : []),
+                  ]}
+                />
+              )}
+
               <DetailGroup
-                icon="identification-card"
+                icon="robot"
                 title="Call details"
                 items={[
+                  { label: "Session duration", value: formatDuration(durationSec) },
+                  ...(agentLabel ? [{ label: "Agent", value: agentLabel }] : []),
+                  { label: "Direction", value: call.direction === "inbound" ? "Inbound" : "Outbound" },
                   { label: "Date", value: new Date(call.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
-                  { label: "Caller", value: call.caller_name || formatPhoneNumber(call.caller_phone) || "—" },
-                  { label: "Carrier", value: call.carrier_name || "—" },
-                  { label: "MC #", value: call.mc_number_hash || call.verified_mc_hash || "—" },
-                  ...(call.reference_number || call.load_ref ? [{ label: "Load #", value: call.reference_number ?? call.load_ref ?? "—" }] : []),
-                  ...(call.posted_rate ? [{ label: "Posted Rate", value: formatCurrency(call.posted_rate) }] : []),
-                  ...(call.agreed_rate ? [{ label: "Agreed Rate", value: formatCurrency(call.agreed_rate) }] : []),
-                  ...(classification ? [{ label: "Outcome", value: classification.replace(/_/g, " ") }] : []),
+                  { label: "Company", value: callX.lead_company || "—" },
                 ]}
               />
 

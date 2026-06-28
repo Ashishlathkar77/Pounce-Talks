@@ -43,8 +43,8 @@ interface PipelineStep {
 const STEPS: PipelineStep[] = [
   { id: "created",  label: "Campaign Created",  detail: "Named & configured",         icon: CheckCircle2 },
   { id: "leads",    label: "Leads Imported",    detail: "Orange Slice query ran",      icon: Users        },
-  { id: "started",  label: "Campaign Started",  detail: "Alex is ready to call",       icon: Play         },
-  { id: "calling",  label: "Alex Calling",      detail: "Live outbound calls",         icon: PhoneCall    },
+  { id: "started",  label: "Campaign Started",  detail: "Paul is ready to call",       icon: Play         },
+  { id: "calling",  label: "Paul Calling",      detail: "Live outbound calls",         icon: PhoneCall    },
   { id: "done",     label: "Results In",        detail: "Meetings booked or wrapped",  icon: CalendarCheck},
 ];
 

@@ -22,6 +22,7 @@ class CallState:
     company: str
     phone: str
     role: str = ""
+    email: str = ""   # may be a real email OR a website domain (Orange Slice)
 
     # ── Gate flags ────────────────────────────────────────────────────────────
     lead_loaded: bool = False
@@ -67,10 +68,13 @@ class CallState:
 
     def to_llm_context(self) -> dict:
         """Return a dict safe to embed in the system prompt. _available_slots excluded."""
+        has_real_email = "@" in (self.email or "")
         return {
             "lead_name": self.name,
             "company": self.company,
             "role": self.role,
+            "email_on_file": self.email if has_real_email else None,
+            "has_real_email": has_real_email,
             "gates": {
                 "lead_loaded": self.lead_loaded,
                 "qualification_complete": self.qualification_complete,

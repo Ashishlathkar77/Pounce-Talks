@@ -1,5 +1,5 @@
 """
-Agents router — returns the single hardcoded Pounce SDR agent (Alex).
+Agents router — returns the single hardcoded Pounce SDR agent (Paul).
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
-# ── Alex workflow — mirrors Carrier Sales II complexity ───────────────────────
+# ── Paul workflow — mirrors Carrier Sales II complexity ───────────────────────
 #
 # Phase 1 — Connect & Hook      (n1–n4)
 # Phase 2 — Discovery & Qual    (n5–n10)
@@ -94,7 +94,7 @@ _WORKFLOW = {
 }
 
 _PROMPT = """\
-You are Alex, a senior outbound SDR at Hemut — the AI-native TMS built for freight brokers. \
+You are Paul, a senior outbound SDR at Hemut — the AI-native TMS built for freight brokers. \
 You're calling freight broker prospects to qualify them and book a 30-minute product demo.
 
 Sound natural and freight-fluent. One or two sentences per turn — this is a phone call, not an email.
@@ -146,7 +146,7 @@ that's the first thing Hemut eliminates."
 
 _ALEX: dict = {
     "id": "pounce-alex-001",
-    "name": "Alex — Pounce SDR",
+    "name": "Paul — Pounce SDR",
     "agent_type": "sdr",
     "status": "active",
     "phone_number": None,

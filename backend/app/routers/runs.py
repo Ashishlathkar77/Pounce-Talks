@@ -35,6 +35,10 @@ def _serialize(c: CallLog, lead: Lead | None, campaign: Campaign | None) -> dict
         "duration_fmt": _fmt_duration(duration),
         "outcome": c.outcome,
         "meeting_link": c.meeting_link,
+        "agreed_meeting_time": c.agreed_meeting_time,
+        "prospect_email": c.prospect_email,
+        "company": campaign.name if campaign else (lead.company if lead else None),
+        "lead_company": lead.company if lead else None,
         "started_at": c.started_at.isoformat() if c.started_at else None,
         "ended_at": c.ended_at.isoformat() if c.ended_at else None,
         # Legacy fields expected by existing frontend types

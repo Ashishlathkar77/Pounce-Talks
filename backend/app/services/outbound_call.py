@@ -88,6 +88,7 @@ class OutboundCallService:
             "company": lead.company,
             "phone": lead.phone,
             "role": lead.role or "",
+            "email": lead.email or "",
             "call_log_id": str(call_log.id),
         })
 
