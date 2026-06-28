@@ -307,8 +307,3 @@ div:focus-visible {
 .hm-table-body .hm-table-cell {
   border-bottom: 1px solid var(--border-neutral-secondary);
 }
-/* Keep the last row clean (no trailing divider). */
-.hm-table-body .hm-table-row:last-child .hm-table-cell,
-.hm-table-foot .hm-table-row:last-child .hm-table-cell {
-  border-bottom: 0;
-}
