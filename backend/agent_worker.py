@@ -348,25 +348,29 @@ async def _create_calcom_booking(start, email: str, name: str, company: str) -> 
 
     import httpx
     payload = {
-        "eventTypeId": int(settings.calcom_event_type_id),
         "start": start,
-        "responses": {"name": name or "Prospect", "email": email,
-                      "notes": f"Booked by Pounce SDR — {company}"},
-        "timeZone": "America/Chicago",
-        "language": "en",
-        "metadata": {"source": "pounce", "company": company},
+        "eventTypeId": int(settings.calcom_event_type_id),
+        "attendee": {
+            "name": name or "Prospect",
+            "email": email,
+            "timeZone": "America/Chicago",
+            "language": "en",
+        },
+        "metadata": {"source": "pounce", "company": (company or "")[:48]},
     }
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                "https://api.cal.com/v1/bookings",
-                params={"apiKey": settings.calcom_api_key},
+                "https://api.cal.com/v2/bookings",
+                headers={
+                    "Authorization": f"Bearer {settings.calcom_api_key}",
+                    "cal-api-version": "2024-08-13",
+                },
                 json=payload,
             )
             resp.raise_for_status()
-            data = resp.json()
-        booking = data.get("booking") or data
-        uid = booking.get("uid") or booking.get("id")
+            data = (resp.json() or {}).get("data") or {}
+        uid = data.get("uid") or data.get("id")
         link = f"https://cal.com/booking/{uid}" if uid else ""
         log.info("calcom_booking_created", email=email, uid=uid)
         return link or f"https://cal.com/hemut/demo?attendee={email}"
@@ -378,7 +382,7 @@ async def _create_calcom_booking(start, email: str, name: str, company: str) -> 
 # ── Cal.com slot fetcher ──────────────────────────────────────────────────────
 
 async def _fetch_calcom_slots(preferred_time: str) -> list[dict]:
-    """Fetch Cal.com slots or fall back to mock."""
+    """Fetch available Cal.com slots (API v2), or fall back to mock."""
     import datetime, httpx
 
     if not settings.calcom_api_key or not settings.calcom_event_type_id:
@@ -389,21 +393,28 @@ async def _fetch_calcom_slots(preferred_time: str) -> list[dict]:
         now = datetime.datetime.now(datetime.timezone.utc)
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.get(
-                "https://api.cal.com/v1/slots",
+                "https://api.cal.com/v2/slots",
+                headers={
+                    "Authorization": f"Bearer {settings.calcom_api_key}",
+                    "cal-api-version": "2024-09-04",
+                },
                 params={
-                    "apiKey": settings.calcom_api_key,
                     "eventTypeId": settings.calcom_event_type_id,
-                    "startTime": now.isoformat(),
-                    "endTime": (now + datetime.timedelta(days=7)).isoformat(),
+                    "start": now.date().isoformat(),
+                    "end": (now + datetime.timedelta(days=7)).date().isoformat(),
                     "timeZone": "America/Chicago",
                 },
             )
             resp.raise_for_status()
-            data = resp.json()
+            data = (resp.json() or {}).get("data") or {}
 
-        raw: list = []
-        for times in (data.get("slots") or {}).values():
-            raw.extend(times)
+        # data is { "YYYY-MM-DD": [ {"start": "ISO"} , ... ], ... }
+        raw: list[str] = []
+        for day in sorted(data.keys()):
+            for slot in data[day]:
+                s = slot.get("start") if isinstance(slot, dict) else slot
+                if s:
+                    raw.append(s)
             if len(raw) >= 4:
                 break
 
@@ -411,8 +422,7 @@ async def _fetch_calcom_slots(preferred_time: str) -> list[dict]:
             return _mock_slots()
 
         formatted = []
-        for s in raw[:2]:
-            start_str = s.get("time", "")
+        for start_str in raw[:2]:
             try:
                 dt = datetime.datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                 label = dt.strftime("%A, %B %-d at %-I:%M %p CT")
