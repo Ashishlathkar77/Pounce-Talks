@@ -66,6 +66,21 @@ class PounceAgent(Agent):
     def __init__(self, state: CallState):
         super().__init__(instructions=build_system_prompt(state))
         self._state = state
+        self._t0: float | None = None        # set in entrypoint (call start)
+        self._hangup = None                   # set in entrypoint; ends the SIP call
+
+    def _record_tool(self, name: str, detail: str = "") -> None:
+        """Append a tool-call marker to the transcript so the Runs view shows
+        exactly which tool fired, when, and what it did."""
+        import time as _t
+        ts = round((_t.monotonic() - self._t0), 2) if self._t0 else 0.0
+        self._state.transcript.append({
+            "role": "tool",
+            "tool": name,
+            "text": f"{name}({detail})" if detail else f"{name}()",
+            "ts": ts,
+        })
+        log.info("tool_call", tool=name, detail=detail, lead_id=self._state.lead_id)
 
     # ── Tool 1: load_lead_context ─────────────────────────────────────────────
 
@@ -76,7 +91,7 @@ class PounceAgent(Agent):
         MUST be the first tool called. Returns lead info as a summary string.
         """
         self._state.lead_loaded = True
-        log.info("load_lead_context", lead_id=self._state.lead_id, name=self._state.name)
+        self._record_tool("load_lead_context", self._state.name)
         return (
             f"Lead loaded — Name: {self._state.name}, "
             f"Company: {self._state.company}, "
@@ -107,6 +122,7 @@ class PounceAgent(Agent):
             setattr(self._state, slot, answer)
         else:
             log.warning("unknown_qual_question", question=question)
+        self._record_tool("log_qualification_answer", f"{question}={answer[:40]}")
 
         async def _fire() -> None:
             try:
@@ -136,7 +152,7 @@ class PounceAgent(Agent):
 
         self._state.qualification_score = score
         self._state.qualification_complete = True
-        log.info("qualify_lead", lead_id=self._state.lead_id, score=score, summary=summary)
+        self._record_tool("qualify_lead", f"score={score}")
 
         if score >= 5:
             return (
@@ -163,12 +179,12 @@ class PounceAgent(Agent):
 
         slots = await _fetch_calcom_slots(preferred_time)
         self._state._available_slots = slots
+        self._record_tool("book_meeting", f"prefers '{preferred_time}', {len(slots)} slots")
 
         if not slots:
             return (
                 "I wasn't able to pull up specific times right now. "
-                "Let me have our team reach out to you directly to schedule. "
-                "What's the best email for you?"
+                "What's the best email for you, and I'll have our team lock a time?"
             )
 
         option_a = slots[0]["label"]
@@ -176,12 +192,63 @@ class PounceAgent(Agent):
 
         if option_b:
             return (
-                f"Great, I have two slots available: Option A is {option_a}, "
-                f"and Option B is {option_b}. Which works better for you?"
+                f"Two options: A is {option_a}, B is {option_b}. Which works better? "
+                f"And what's the best email for the invite? Then I'll call confirm_meeting."
             )
-        return f"I have {option_a} available. Does that work for you?"
+        return (
+            f"I've got {option_a}. Does that work? If so, what's your email and "
+            f"I'll confirm it."
+        )
 
-    # ── Tool 5: end_call ──────────────────────────────────────────────────────
+    # ── Tool 5: confirm_meeting ───────────────────────────────────────────────
+
+    @function_tool
+    async def confirm_meeting(self, slot_choice: str, email: str) -> str:
+        """
+        Confirm and BOOK the demo once the prospect picks a slot and gives email.
+        Creates the calendar booking and returns the confirmation.
+        slot_choice: 'A' or 'B', or the spoken time they chose
+        email: the prospect's email for the calendar invite
+        """
+        ok, reason = self._state.can_book_meeting()
+        if not ok:
+            return f"Cannot book meeting: {reason}."
+
+        slots = self._state._available_slots or []
+        chosen = None
+        c = (slot_choice or "").strip().lower()
+        if c in ("a", "option a", "first") and slots:
+            chosen = slots[0]
+        elif c in ("b", "option b", "second") and len(slots) > 1:
+            chosen = slots[1]
+        else:
+            for s in slots:
+                if c and c in s.get("label", "").lower():
+                    chosen = s; break
+        if not chosen and slots:
+            chosen = slots[0]
+
+        start = chosen.get("start") if chosen else None
+        label = chosen.get("label") if chosen else "the time we discussed"
+
+        link = await _create_calcom_booking(
+            start=start, email=email, name=self._state.name, company=self._state.company,
+        )
+
+        self._state.prospect_email = email
+        self._state.agreed_meeting_time = label
+        self._state.meeting_link = link or ""
+        self._state.meeting_booked = True
+        self._record_tool("confirm_meeting", f"{label} / {email}")
+
+        link_line = f" The invite is on its way to {email}." if link else \
+                    f" Our team will email the invite to {email}."
+        return (
+            f"Booked you for {label}.{link_line} Anything else before I let you go? "
+            f"Then call end_call with outcome=meeting_booked."
+        )
+
+    # ── Tool 6: end_call ──────────────────────────────────────────────────────
 
     @function_tool
     async def end_call(self, outcome: str) -> str:
@@ -190,11 +257,12 @@ class PounceAgent(Agent):
         ALWAYS call this — it is required to close out every call.
         outcome: One of qualified | not_qualified | meeting_booked | no_answer | failed
         """
-        log.info("end_call", lead_id=self._state.lead_id, outcome=outcome)
+        self._record_tool("end_call", f"outcome={outcome}")
 
-        # Fire-and-forget; the shutdown fallback (_finalize_call) covers the case
-        # where the caller hangs up before the agent reaches this tool.
+        # Persist the result, then hang up the SIP line after the goodbye plays.
         asyncio.create_task(_post_call_outcome(self._state, outcome))
+        if self._hangup:
+            self._hangup()   # schedules the actual disconnect (see entrypoint)
 
         farewells = {
             "meeting_booked": (
@@ -240,6 +308,7 @@ async def _post_call_outcome(state, outcome: str) -> None:
                     "q_decision_maker": state.q_decision_maker,
                     "agreed_meeting_time": state.agreed_meeting_time,
                     "meeting_link": state.meeting_link,
+                    "prospect_email": state.prospect_email,
                     "transcript": state.transcript,
                 },
             )
@@ -261,6 +330,49 @@ def _derive_outcome(state) -> str:
     if not state.transcript:
         return "no_answer"
     return "failed"
+
+
+# ── Cal.com booking creator ───────────────────────────────────────────────────
+
+async def _create_calcom_booking(start, email: str, name: str, company: str) -> str:
+    """
+    Create a real Cal.com booking for `start` (ISO time) with the prospect's
+    email. Returns a meeting link, or "" on failure. Falls back to a placeholder
+    confirmation link when Cal.com isn't configured so the demo still completes.
+    """
+    if not start:
+        return ""
+    if not settings.calcom_api_key or not settings.calcom_event_type_id:
+        log.info("calcom_not_configured_booking_mock", email=email)
+        return f"https://cal.com/hemut/demo?attendee={email}"
+
+    import httpx
+    payload = {
+        "eventTypeId": int(settings.calcom_event_type_id),
+        "start": start,
+        "responses": {"name": name or "Prospect", "email": email,
+                      "notes": f"Booked by Pounce SDR — {company}"},
+        "timeZone": "America/Chicago",
+        "language": "en",
+        "metadata": {"source": "pounce", "company": company},
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                "https://api.cal.com/v1/bookings",
+                params={"apiKey": settings.calcom_api_key},
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        booking = data.get("booking") or data
+        uid = booking.get("uid") or booking.get("id")
+        link = f"https://cal.com/booking/{uid}" if uid else ""
+        log.info("calcom_booking_created", email=email, uid=uid)
+        return link or f"https://cal.com/hemut/demo?attendee={email}"
+    except Exception as exc:
+        log.warning("calcom_booking_failed", error=str(exc), email=email)
+        return f"https://cal.com/hemut/demo?attendee={email}"
 
 
 # ── Cal.com slot fetcher ──────────────────────────────────────────────────────
@@ -510,6 +622,31 @@ async def entrypoint(ctx: JobContext) -> None:
     # can ship it to the outcome webhook → Runs tab. ts = seconds since start.
     import time as _time
     _call_t0 = _time.monotonic()
+    agent._t0 = _call_t0   # tool-call markers share the same clock
+
+    # ── Hang up the SIP line when end_call fires ──────────────────────────────
+    # Give the goodbye line time to play, then delete the room (drops the PSTN
+    # leg + the agent) so the call actually ends.
+    def _hangup() -> None:
+        async def _go() -> None:
+            await asyncio.sleep(7.0)  # let the farewell finish speaking
+            try:
+                from livekit import api as _lkapi
+                lk = _lkapi.LiveKitAPI(
+                    url=settings.livekit_url,
+                    api_key=settings.livekit_api_key,
+                    api_secret=settings.livekit_api_secret,
+                )
+                try:
+                    await lk.room.delete_room(_lkapi.DeleteRoomRequest(room=ctx.room.name))
+                    log.info("call_hung_up", room=ctx.room.name)
+                finally:
+                    await lk.aclose()
+            except Exception as exc:
+                log.warning("hangup_failed", error=str(exc))
+        asyncio.create_task(_go())
+
+    agent._hangup = _hangup
 
     def _on_conversation_item(ev) -> None:
         try:

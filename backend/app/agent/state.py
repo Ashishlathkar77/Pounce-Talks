@@ -43,6 +43,7 @@ class CallState:
     call_log_id: str = ""
     agreed_meeting_time: str = ""
     meeting_link: str = ""
+    prospect_email: str = ""
 
     # ── Transcript ────────────────────────────────────────────────────────────
     # Accumulated conversation turns: {"role": "user"|"assistant", "text": str,
