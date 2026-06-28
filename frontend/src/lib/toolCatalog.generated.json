@@ -1,0 +1,1201 @@
+{
+  "schema_version": "1.0",
+  "tools": {
+    "ask_for_more_loads": {
+      "name": "ask_for_more_loads",
+      "description": "After booking a load, ask the carrier if they have more trucks needing loads. Always call this after a successful book_load before wrapping up.",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        }
+      ]
+    },
+    "assign_driver": {
+      "name": "assign_driver",
+      "description": "Assign a driver to a load after agreement. Used in outbound dispatch calls.",
+      "inputs": [
+        {
+          "name": "driver_id",
+          "type": "string",
+          "description": "Driver ID",
+          "required": true
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "description": "Load ID",
+          "required": true
+        },
+        {
+          "name": "agreed_rate",
+          "type": "number",
+          "description": "Agreed rate in dollars",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "assignment_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "book_load": {
+      "name": "book_load",
+      "description": "Book the load after the carrier has accepted a rate. Only call this when evaluate_offer returned next_steps='accept'. Returns confirmation_number on success.",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "confirmation_number",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "agreed_rate",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "capture_location": {
+      "name": "capture_location",
+      "description": "Record a driver's current location and ETA for a load. Used during driver check calls and detention monitoring.",
+      "inputs": [
+        {
+          "name": "location_text",
+          "type": "string",
+          "description": "Driver's current location as they described it",
+          "required": true
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "description": "The load or order ID",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "location_text",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "eta_minutes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "capture_rejection": {
+      "name": "capture_rejection",
+      "description": "",
+      "inputs": [
+        {
+          "name": "reason",
+          "type": "string",
+          "description": "Why the carrier or broker rejected (free text).",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "check_driver_hos": {
+      "name": "check_driver_hos",
+      "description": "Check a driver's current hours of service (HOS) availability.",
+      "inputs": [
+        {
+          "name": "driver_id",
+          "type": "string",
+          "description": "Driver ID from TMS",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "available_minutes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "driver_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "collect_pod": {
+      "name": "collect_pod",
+      "description": "Record that POD (proof of delivery) has been confirmed or is being sent.",
+      "inputs": [
+        {
+          "name": "load_id",
+          "type": "string",
+          "description": "Load or order ID",
+          "required": true
+        },
+        {
+          "name": "pod_method",
+          "type": "string",
+          "description": "How POD will be sent: 'email', 'fax', 'app_upload'",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "confirm_action": {
+      "name": "confirm_action",
+      "description": "",
+      "inputs": [
+        {
+          "name": "confirmation",
+          "type": "string",
+          "description": "Short confirmation message logged on call (e.g. 'bid accepted at $1,500').",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "confirmed",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "evaluate_offer": {
+      "name": "evaluate_offer",
+      "description": "Evaluate a carrier's rate offer and get instructions on how to respond. Call this every time the carrier gives you a dollar amount. Returns next_steps telling you whether to accept, counter, or stop negotiating. Always increment offer_attempt by 1 on each call — it must always go up.",
+      "inputs": [
+        {
+          "name": "reference_number",
+          "type": "string",
+          "description": "The load reference number being negotiated (e.g. '0552991')",
+          "required": true
+        },
+        {
+          "name": "offer_amount",
+          "type": "number",
+          "description": "The carrier's latest offer in dollars (numeric only, e.g. 1500)",
+          "required": true
+        },
+        {
+          "name": "offer_attempt",
+          "type": "integer",
+          "description": "Negotiation round number, starting at 1. Increment by 1 each call.",
+          "required": true
+        },
+        {
+          "name": "our_last_offer_amount",
+          "type": "number",
+          "description": "Our previous counter-offer in dollars. Pass 0 on the first call.",
+          "required": true
+        },
+        {
+          "name": "truck_empty_location",
+          "type": "string",
+          "description": "City and state where the carrier's truck will be empty (e.g. 'Chicago, IL')",
+          "required": false
+        },
+        {
+          "name": "truck_empty_time",
+          "type": "string",
+          "description": "Date/time when the truck will be empty (MM-DD-YYYY format, e.g. '04-26-2026')",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "action",
+          "type": "string",
+          "description": "'accept' | 'counter' | 'decline' | 'unclear' | 'blocked'.",
+          "required": false
+        },
+        {
+          "name": "agreed_rate",
+          "type": "number",
+          "description": "Set when action='accept'.",
+          "required": false
+        },
+        {
+          "name": "our_offer",
+          "type": "number",
+          "description": "Set when action='counter'.",
+          "required": false
+        },
+        {
+          "name": "next_steps",
+          "type": "string",
+          "description": "Instruction text the LLM should follow.",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "find_load": {
+      "name": "find_load",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "found",
+          "type": "boolean",
+          "description": "True when the load was found and bookable.",
+          "required": false
+        },
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "description": "Reference number that resolved.",
+          "required": false
+        },
+        {
+          "name": "load_data",
+          "type": "object",
+          "description": "Origin, destination, equipment, posted_rate, pickup/delivery.",
+          "required": false
+        },
+        {
+          "name": "load_status",
+          "type": "string",
+          "description": "Human-readable load status.",
+          "required": false
+        },
+        {
+          "name": "say_this_now",
+          "type": "string",
+          "description": "Pre-baked utterance the LLM may speak verbatim.",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "attempt",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    "find_load_by_reference": {
+      "name": "find_load_by_reference",
+      "description": "Look up a load by reference number — digits only, strip any letters. Requires carrier to be verified first (verify_carrier). Returns load details: origin, destination, equipment, posted_rate, pickup_date, delivery_date.",
+      "inputs": [
+        {
+          "name": "reference_number",
+          "type": "string",
+          "description": "The load reference number, digits only — strip any letters (e.g. '0527934')",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "found",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "load_data",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "load_status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "say_this_now",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "attempt",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    "find_loads_by_lane": {
+      "name": "find_loads_by_lane",
+      "description": "Search for available loads by lane. Use ONLY when the carrier has no reference number or when find_load fails. Origin and equipment_type are required.",
+      "inputs": [
+        {
+          "name": "origin",
+          "type": "string",
+          "description": "City or state the carrier is coming out of (e.g. 'Chicago, IL')",
+          "required": true
+        },
+        {
+          "name": "equipment_type",
+          "type": "string",
+          "description": "Trailer type: 'Dry Van', 'Reefer', 'Flatbed', 'Step Deck'",
+          "required": true
+        },
+        {
+          "name": "destination",
+          "type": "string",
+          "description": "Optional destination city or state",
+          "required": false
+        },
+        {
+          "name": "pickup_date",
+          "type": "string",
+          "description": "Optional pickup date (e.g. 'today', 'tomorrow', '2026-04-26')",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loads",
+          "type": "array",
+          "description": "List of matching loads.",
+          "required": false
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "get_available_loads": {
+      "name": "get_available_loads",
+      "description": "Get available loads for a carrier to choose from. Use when the carrier asks what loads are available without a specific ref.",
+      "inputs": [
+        {
+          "name": "origin",
+          "type": "string",
+          "description": "City or state",
+          "required": false
+        },
+        {
+          "name": "equipment_type",
+          "type": "string",
+          "description": "Trailer type",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loads",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    "get_carrier_history": {
+      "name": "get_carrier_history",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "loads_completed",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "on_time_pct",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "last_load_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "get_detention_claim": {
+      "name": "get_detention_claim",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "claim_status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "detention_minutes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "get_dispatch_rate": {
+      "name": "get_dispatch_rate",
+      "description": "Get the dispatch rate for a load. Used by dispatch outbound agents.",
+      "inputs": [
+        {
+          "name": "load_id",
+          "type": "string",
+          "description": "Load or order ID",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "rate",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "get_load_status": {
+      "name": "get_load_status",
+      "description": "Check the current status of a load (picked up, in transit, delivered, etc.)",
+      "inputs": [
+        {
+          "name": "reference_number",
+          "type": "string",
+          "description": "The load reference number",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "last_update",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "get_market_rates": {
+      "name": "get_market_rates",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "low_rate",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "mid_rate",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "high_rate",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "lane",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "get_rate_confirmation": {
+      "name": "get_rate_confirmation",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "hang_up": {
+      "name": "hang_up",
+      "description": "End the call. Use only after log_call and when the conversation is fully complete.",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        }
+      ]
+    },
+    "leave_voicemail": {
+      "name": "leave_voicemail",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        }
+      ]
+    },
+    "log_call": {
+      "name": "log_call",
+      "description": "Log the call outcome. Call this at the end of every call before hang_up. Records the outcome, negotiation result, and carrier info.",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "logged_outcome",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "log_detention": {
+      "name": "log_detention",
+      "description": "Log detention time and charges for a driver at a stop.",
+      "inputs": [
+        {
+          "name": "load_id",
+          "type": "string",
+          "description": "Load or order ID",
+          "required": true
+        },
+        {
+          "name": "stop_type",
+          "type": "string",
+          "description": "'pickup' or 'delivery'",
+          "required": true
+        },
+        {
+          "name": "arrival_time",
+          "type": "string",
+          "description": "Arrival time at stop (ISO format)",
+          "required": false
+        },
+        {
+          "name": "detention_minutes",
+          "type": "integer",
+          "description": "Total minutes of detention",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "detention_minutes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "move_on": {
+      "name": "move_on",
+      "description": "Signal that carrier verification is complete and transition to load-finding phase. Call this immediately after the carrier is successfully verified and confirmed. You MUST call this before using find_load or find_loads_by_lane.",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        }
+      ]
+    },
+    "negotiate_bid_rate": {
+      "name": "negotiate_bid_rate",
+      "description": "",
+      "inputs": [
+        {
+          "name": "broker_offer_text",
+          "type": "string",
+          "description": "Broker's spoken offer in their exact words (e.g. 'fourteen hundred', '$1,450 all in').",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "agreed_rate",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "our_offer",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "negotiate_dispatch_rate": {
+      "name": "negotiate_dispatch_rate",
+      "description": "Negotiate a rate with a carrier on an outbound dispatch call. Returns action: accept/counter/decline.",
+      "inputs": [
+        {
+          "name": "carrier_offer_text",
+          "type": "string",
+          "description": "Carrier's offer in natural language",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "agreed_rate",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "our_offer",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "negotiate_rate": {
+      "name": "negotiate_rate",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "agreed_rate",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "our_offer",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "schedule_callback": {
+      "name": "schedule_callback",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "callback_token",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "search_drivers": {
+      "name": "search_drivers",
+      "description": "Search for available drivers matching lane and equipment requirements.",
+      "inputs": [
+        {
+          "name": "origin",
+          "type": "string",
+          "description": "City or state the driver is coming out of",
+          "required": true
+        },
+        {
+          "name": "equipment_type",
+          "type": "string",
+          "description": "Trailer type: Dry Van, Reefer, Flatbed, Step Deck",
+          "required": true
+        },
+        {
+          "name": "pickup_date",
+          "type": "string",
+          "description": "Pickup date (e.g. 'today', 'tomorrow', '2026-04-26')",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "drivers",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    "search_loads": {
+      "name": "search_loads",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "loads",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    "send_rate_con": {
+      "name": "send_rate_con",
+      "description": "Send the rate confirmation to the carrier's email.",
+      "inputs": [
+        {
+          "name": "email",
+          "type": "string",
+          "description": "Carrier's email address",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "transfer_to_carrier_sales_rep": {
+      "name": "transfer_to_carrier_sales_rep",
+      "description": "Transfer the call to a human carrier sales rep. Use when: carrier requests human, verification fails 3 times, load not found after attempts, rate agreed (set transfer_reason to 'Load [ref] sold for $[amount]'), or any unresolvable situation. Never use the word 'finalize' in any message before transferring. Keep pre-transfer message vague and natural.",
+      "inputs": [
+        {
+          "name": "transfer_reason",
+          "type": "string",
+          "description": "Why you are transferring or the booking message. When rate is agreed: 'Load [ref] sold for $[amount]'. Otherwise: brief reason like 'carrier requested human', '3 MC verification failures'.",
+          "required": true
+        },
+        {
+          "name": "caller_name",
+          "type": "string",
+          "description": "Carrier's name as collected during the call. Use 'None' if not captured.",
+          "required": false
+        },
+        {
+          "name": "spoken_carrier_mc",
+          "type": "string",
+          "description": "MC number spoken digit-by-digit with spaces between each digit (e.g. '1 3 5 8 7 2 0'). Use 'None' if carrier was not verified.",
+          "required": false
+        },
+        {
+          "name": "carrier_name",
+          "type": "string",
+          "description": "Carrier company name as returned by verify_carrier. Use 'None' if not verified.",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "transfer_target",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "transfer_reason",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "transfer_to_human": {
+      "name": "transfer_to_human",
+      "description": "Transfer the call to a human dispatcher or carrier sales rep. Use when: carrier requests human, verification fails 3 times, load not found after 2 attempts, rate agreed (use reason='rate agreed — ready to book'), or any unresolvable situation.",
+      "inputs": [
+        {
+          "name": "reason",
+          "type": "string",
+          "description": "Why you are transferring (e.g. 'carrier requested human', 'rate agreed')",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "transfer_target",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "transfer_reason",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "update_appointment": {
+      "name": "update_appointment",
+      "description": "Update a pickup or delivery appointment time for a load.",
+      "inputs": [
+        {
+          "name": "load_id",
+          "type": "string",
+          "description": "Load or order ID",
+          "required": true
+        },
+        {
+          "name": "stop_type",
+          "type": "string",
+          "description": "'pickup' or 'delivery'",
+          "required": true
+        },
+        {
+          "name": "new_time",
+          "type": "string",
+          "description": "New appointment time (ISO format)",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "update_load_notes": {
+      "name": "update_load_notes",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "load_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "verify_carrier": {
+      "name": "verify_carrier",
+      "description": "Verify a carrier by their MC (Motor Carrier) number. Call this before find_load or evaluate_offer. Returns verified=true with carrier_name on success.",
+      "inputs": [
+        {
+          "name": "mc_number",
+          "type": "string",
+          "description": "The carrier's MC number (digits only, e.g. '4829204')",
+          "required": true
+        },
+        {
+          "name": "dot_number",
+          "type": "string",
+          "description": "The carrier's DOT number (optional, digits only, e.g. '1234567')",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "description": "True when the carrier was verified.",
+          "required": false
+        },
+        {
+          "name": "verified",
+          "type": "boolean",
+          "description": "Alias of success on the FMCSA path.",
+          "required": false
+        },
+        {
+          "name": "already_verified",
+          "type": "boolean",
+          "description": "True on a re-verify of an already-verified carrier.",
+          "required": false
+        },
+        {
+          "name": "carrier_name",
+          "type": "string",
+          "description": "Carrier company name on success.",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "description": "Error reason on failure.",
+          "required": false
+        },
+        {
+          "name": "attempt",
+          "type": "integer",
+          "description": "Attempt count (1..3).",
+          "required": false
+        }
+      ]
+    },
+    "verify_insurance": {
+      "name": "verify_insurance",
+      "description": "",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "valid",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "expires_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        }
+      ]
+    }
+  }
+}

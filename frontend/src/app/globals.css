@@ -1,0 +1,314 @@
+@import "./hemut-ds.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Pounce app-level globals.
+ *
+ * The Hemut Design System (`@hemut2025/design-system/styles.css`) is imported
+ * above and provides every primitive: --grey-*, --brand-*, --bg-*, --text-*,
+ * --border-*, --space-*, --radius-*, --shadow-*. This file is app-specific glue:
+ *
+ *   1. Body defaults (font stack, base background, antialiasing).
+ *   2. Backward-compat aliases — existing pages reference --bg, --text, etc.
+ *   3. Animations (theme-neutral).
+ */
+
+:root {
+  /* ── DS border alias bridge ─────────────────────────────────────────────── */
+  --border-neutral-subtle: var(--border-neutral-primary);
+  --border-neutral-bold:   var(--border-neutral-secondary);
+
+  /* Legacy var aliases */
+  --bg:           var(--bg-neutral-primary);
+  --bg-2:         var(--bg-neutral-secondary);
+  --bg-3:         var(--bg-neutral-tertiary);
+  --green:        var(--green-500);
+  --red:          var(--red-500);
+  --yellow:       var(--brand-300);
+  --text:         var(--text-neutral-primary);
+  --dim:          var(--text-neutral-secondary);
+  --dim2:         var(--text-neutral-tertiary);
+  --dim3:         var(--text-neutral-disabled);
+  --border:       var(--border-neutral-subtle);
+  --border2:      var(--border-neutral-bold);
+
+  --bg-primary:   var(--bg-neutral-primary);
+  --bg-surface:   var(--bg-neutral-secondary);
+  --bg-elevated:  var(--bg-neutral-primary);
+  --bg-hover:     var(--bg-neutral-secondary);
+  --accent:       var(--brand-300);
+  --accent-muted: var(--brand-50);
+  --accent-subtle: var(--brand-50);
+  --text-primary:   var(--text-neutral-primary);
+  --text-secondary: var(--text-neutral-secondary);
+  --text-muted:     var(--text-neutral-tertiary);
+  --border-hover:   var(--border-neutral-bold);
+  --shadow:    rgba(31, 31, 42, 0.08);
+  --shadow-lg: rgba(31, 31, 42, 0.16);
+  --sidebar-width: 204px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* AppShell uses `height: 100%` on .hm-shell */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#__next, body > div:first-child {
+  height: 100%;
+}
+
+html {
+  background: var(--bg-neutral-primary);
+}
+
+body {
+  background: var(--bg-neutral-primary);
+  color: var(--text-neutral-primary);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* Targeted transitions */
+a, button, [role="button"] {
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    opacity 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Scrollbar */
+* { scrollbar-width: thin; scrollbar-color: var(--border-neutral-secondary) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-neutral-secondary);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-neutral-tertiary); }
+::selection {
+  background: var(--brand-200);
+  color: var(--text-neutral-primary);
+}
+
+/* Focus */
+a:focus-visible,
+button:focus-visible,
+input:not([class*="hm-"]):focus-visible,
+select:not([class*="hm-"]):focus-visible,
+textarea:not([class*="hm-"]):focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="menuitem"]:focus-visible {
+  outline: 2px solid var(--border-focus, var(--brand-300));
+  outline-offset: 2px;
+}
+
+div:focus-visible {
+  outline: none;
+}
+
+/* Full-bleed pages */
+.hm-shell-content:has(> .converse-fullbleed-page) {
+  padding: 0 !important;
+}
+
+/* DS Tabs — un-clip glyph descenders */
+.hm-tabs-label {
+  line-height: 1.35;
+}
+
+/* ── Backward-compat utility classes ───────────────────────────────────────── */
+
+@layer components {
+  .term-card,
+  .glass-card {
+    background: var(--bg-neutral-primary);
+    border: 1px solid var(--border-neutral-subtle);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(31, 31, 42, 0.04);
+  }
+
+  .term-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-neutral-secondary);
+    border-bottom: 1px solid var(--border-neutral-subtle);
+    border-radius: 12px 12px 0 0;
+  }
+
+  .term-card-dots { display: none; }
+  .term-card-body { padding: 16px; }
+
+  .term-input,
+  .glass-input {
+    background: var(--bg-neutral-primary);
+    border: 1px solid var(--border-neutral-bold);
+    color: var(--text-neutral-primary);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    outline: none;
+    display: block;
+    width: 100%;
+  }
+  .term-input:focus,
+  .glass-input:focus {
+    border-color: var(--brand-300);
+    box-shadow: 0 0 0 3px var(--brand-100);
+  }
+  .term-input::placeholder,
+  .glass-input::placeholder { color: var(--text-neutral-disabled); }
+
+  .glass-button {
+    background: var(--bg-neutral-primary);
+    border: 1px solid var(--border-neutral-subtle);
+    border-radius: 8px;
+    color: var(--text-neutral-primary);
+  }
+  .glass-button:hover {
+    background: var(--bg-neutral-secondary);
+    border-color: var(--border-neutral-bold);
+  }
+
+  .badge-ok {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-radius: 9999px;
+    background: var(--bg-success-subtle);
+    color: var(--green-700);
+    border: 1px solid var(--green-50);
+  }
+  .badge-fail {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-radius: 9999px;
+    background: var(--bg-error-subtle);
+    color: var(--red-700);
+    border: 1px solid var(--red-50);
+  }
+  .badge-warn {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-radius: 9999px;
+    background: var(--brand-50);
+    color: var(--brand-700);
+    border: 1px solid var(--brand-100);
+  }
+}
+
+/* Hemut DS Sidebar — descender clipping fix */
+.hm-sb-item-label {
+  line-height: 1.4;
+}
+
+/* Orange Slice logo: white on dark sidebar, black on light */
+.pounce-logo {
+  filter: brightness(0) invert(1);
+}
+[data-theme="light"] .pounce-logo {
+  filter: none;
+}
+
+/* Top-level nav items spacing fix */
+.hm-sb-nav > .hm-sb-item + .hm-sb-item {
+  margin-top: calc(var(--space-sm) * -1);
+}
+
+/* ── Animations ─────────────────────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.animate-fade-in  { animation: fade-in 200ms ease forwards; }
+.animate-slide-up { animation: slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-scale-in { animation: scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-pulse    { animation: pulse 2s ease infinite; }
+.pulse-dot        { animation: pulse-dot 1.4s ease-in-out infinite; }
+.shimmer-bg {
+  background: linear-gradient(90deg, var(--grey-50) 25%, var(--grey-100) 50%, var(--grey-50) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   DS DataTable polish (applies to Agents, Runs, and any DS table):
+   - centered column headers
+   - clear, visible grid lines (both row dividers and column dividers)
+   Loaded after hemut-ds.css so these win. The default border token (grey-100)
+   is nearly invisible, so we step up to --border-neutral-secondary (grey-300).
+   The Campaign leads table is hand-rolled and carries its own dividers inline.
+   ────────────────────────────────────────────────────────────────────────── */
+.hm-table-head-cell {
+  text-align: center;
+}
+/* Vertical column divider lines */
+.hm-table-head-cell,
+.hm-table-body .hm-table-cell {
+  border-right: 1px solid var(--border-neutral-secondary);
+}
+.hm-table-head-cell:last-child,
+.hm-table-body .hm-table-row .hm-table-cell:last-child {
+  border-right: 0;
+}
+/* Horizontal row divider lines under every entry */
+.hm-table-head-cell,
+.hm-table-body .hm-table-cell {
+  border-bottom: 1px solid var(--border-neutral-secondary);
+}
+/* Keep the last row clean (no trailing divider). */
+.hm-table-body .hm-table-row:last-child .hm-table-cell,
+.hm-table-foot .hm-table-row:last-child .hm-table-cell {
+  border-bottom: 0;
+}
