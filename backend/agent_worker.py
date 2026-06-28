@@ -54,6 +54,15 @@ _FREIGHT_KEYTERMS = [
 # inbound carrier sales II agent.
 _BLAKE_VOICE_ID = "a167e0f3-df7e-4d52-a9c3-f949145efdab"
 
+# Pronunciation fix for the brand name — Cartesia inline phonemes: "Hemut" =
+# HAY-mut. Applied as a TTS text transform so the spoken audio is right while
+# the transcript still reads "Hemut".
+_PRONUNCIATIONS = {"Hemut": "<<ˈheɪ|m|ʌt>>"}
+try:
+    from livekit.agents.voice.transcription.text_transforms import replace as _lk_replace
+except Exception:
+    _lk_replace = None
+
 
 # ── Agent class ───────────────────────────────────────────────────────────────
 
@@ -670,6 +679,12 @@ async def entrypoint(ctx: JobContext) -> None:
     )
     if turn_detector:
         session_kwargs["turn_detection"] = turn_detector
+    # Brand pronunciation: keep the default filters, add the "Hemut" phoneme fix.
+    if _lk_replace is not None:
+        session_kwargs["tts_text_transforms"] = [
+            "filter_markdown", "filter_emoji",
+            _lk_replace(_PRONUNCIATIONS, case_sensitive=False),
+        ]
 
     session = AgentSession(**session_kwargs)
     agent = PounceAgent(state)
