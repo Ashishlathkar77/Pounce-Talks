@@ -187,6 +187,8 @@ class OutboundCallService:
         meeting_link: str | None,
         qualification_score: int | None,
         db: AsyncSession,
+        agreed_meeting_time: str | None = None,
+        prospect_email: str | None = None,
     ) -> None:
         result = await db.execute(
             select(CallLog).where(CallLog.id == uuid.UUID(call_log_id))
@@ -220,6 +222,8 @@ class OutboundCallService:
                 outcome=outcome,
                 transcript=transcript,
                 meeting_link=meeting_link,
+                agreed_meeting_time=agreed_meeting_time or None,
+                prospect_email=prospect_email or None,
                 duration_seconds=duration,
                 ended_at=now,
             )

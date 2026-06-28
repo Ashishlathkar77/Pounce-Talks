@@ -900,15 +900,33 @@ export function RunDetailPanel({
   }
 
   const call = data;
-  const transcript: TranscriptTurn[] = ((data.transcript ?? []) as unknown as Array<{
-    role: string; text: string; ts: string | number;
-  }>).map((t, i) => ({
-    id: String(i), turn: i,
-    role: (t.role === "assistant" ? "agent" : t.role === "user" ? "caller" : t.role) as "agent" | "caller",
-    text: t.text, ts: t.ts,
-  }));
+  const rawTranscript = (data.transcript ?? []) as unknown as Array<{
+    role: string; text: string; ts: string | number; tool?: string;
+  }>;
 
-  const toolCalls = (data.tool_calls ?? []) as ToolCall[];
+  // Spoken turns (user/agent). role="tool" markers are split out below so they
+  // render as distinct tool rows in the timeline, not chat bubbles.
+  const transcript: TranscriptTurn[] = rawTranscript
+    .filter((t) => t.role !== "tool")
+    .map((t, i) => ({
+      id: String(i), turn: i,
+      role: (t.role === "assistant" ? "agent" : t.role === "user" ? "caller" : t.role) as "agent" | "caller",
+      text: t.text, ts: t.ts,
+    }));
+
+  // Tool-call markers captured during the call (which tool fired, when, args),
+  // merged with any structured tool_calls the backend provides.
+  const toolCalls: ToolCall[] = [
+    ...rawTranscript
+      .filter((t) => t.role === "tool")
+      .map((t, i) => ({
+        id: `tool-${i}`,
+        tool: t.tool || "tool",
+        ts: t.ts,
+        result: { detail: t.text, success: true },
+      })) as unknown as ToolCall[],
+    ...((data.tool_calls ?? []) as ToolCall[]),
+  ];
   const durationSec = call.duration_sec ?? call.duration_seconds ?? null;
   const classification = call.classification ?? call.outcome ?? call.negotiation_outcome ?? null;
   const audit = data.audit_result;

@@ -39,6 +39,7 @@ class CallOutcomePayload(BaseModel):
     q_decision_maker: str = ""
     agreed_meeting_time: str = ""
     meeting_link: str | None = None
+    prospect_email: str = ""
     transcript: list[dict] | None = None
 
 
@@ -119,6 +120,8 @@ async def call_outcome(
         transcript=body.transcript,
         meeting_link=body.meeting_link,
         qualification_score=body.qualification_score,
+        agreed_meeting_time=body.agreed_meeting_time or None,
+        prospect_email=body.prospect_email or None,
         db=db,
     )
 

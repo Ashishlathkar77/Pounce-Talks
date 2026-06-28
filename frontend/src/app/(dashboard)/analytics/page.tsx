@@ -443,8 +443,8 @@ function FunnelCard({ stages, days }: { stages: FunnelStage[]; days: number }) {
 
   return (
     <ChartCard
-      title="Carrier sales conversion funnel"
-      subtitle={`Stage-by-stage drop-off across carrier_sales calls · last ${days} days`}
+      title="Conversion funnel"
+      subtitle={`Stage-by-stage drop-off · dialed → connected → qualified → booked · last ${days} days`}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {stages.map((s, i) => {
@@ -856,10 +856,88 @@ const RANGE_DAYS: Record<TimeRange, number> = {
   "7 days": 7, "14 days": 14, "30 days": 30, "90 days": 90,
 };
 
+/* ── Meetings booked — with whom, when, email, link ──────────────────────── */
+
+interface BookedMeeting {
+  call_id: string;
+  name: string | null;
+  company: string | null;
+  email: string | null;
+  meeting_time: string | null;
+  meeting_link: string | null;
+  booked_at: string | null;
+  qualification_score: number | null;
+}
+
+function MeetingsBooked({ days }: { days: number }) {
+  const window = Math.max(days, 30);
+  const { data } = useSWR<{ meetings: BookedMeeting[]; total: number }>(
+    `/api/analytics/meetings?days=${window}`, fetcher,
+  );
+  const meetings = data?.meetings ?? [];
+  const cell: React.CSSProperties = {
+    padding: "12px 14px", fontSize: 13, color: "var(--text-neutral-primary)",
+    borderBottom: "1px solid var(--border-neutral-subtle)", verticalAlign: "middle",
+  };
+  const head: React.CSSProperties = {
+    padding: "10px 14px", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em",
+    textTransform: "uppercase", color: "var(--text-neutral-secondary)", textAlign: "left",
+    borderBottom: "1px solid var(--border-neutral-secondary)",
+  };
+  return (
+    <ChartCard
+      title="Meetings booked"
+      subtitle={`${meetings.length} demo${meetings.length === 1 ? "" : "s"} booked · last ${window} days`}
+    >
+      {meetings.length === 0 ? (
+        <ChartEmpty message="No meetings booked yet — booked demos show here with the attendee, time, and calendar link." />
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+            <thead>
+              <tr>
+                <th style={head}>With</th>
+                <th style={head}>Email</th>
+                <th style={head}>Meeting time</th>
+                <th style={head}>Booked</th>
+                <th style={head}>Invite</th>
+              </tr>
+            </thead>
+            <tbody>
+              {meetings.map((m) => (
+                <tr key={m.call_id}>
+                  <td style={cell}>
+                    <div style={{ fontWeight: 600 }}>{m.name || m.company || "—"}</div>
+                    {m.company && m.name && m.company !== m.name && (
+                      <div style={{ fontSize: 11.5, color: "var(--text-neutral-secondary)" }}>{m.company}</div>
+                    )}
+                  </td>
+                  <td style={{ ...cell, color: "var(--text-neutral-secondary)" }}>{m.email || "—"}</td>
+                  <td style={cell}>{m.meeting_time || "—"}</td>
+                  <td style={{ ...cell, color: "var(--text-neutral-secondary)", fontVariantNumeric: "tabular-nums" }}>
+                    {m.booked_at ? new Date(m.booked_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}
+                  </td>
+                  <td style={cell}>
+                    {m.meeting_link ? (
+                      <a href={m.meeting_link} target="_blank" rel="noopener noreferrer"
+                         style={{ color: "var(--text-brand-primary, #b45309)", textDecoration: "underline", fontWeight: 600 }}>
+                        Open invite ↗
+                      </a>
+                    ) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </ChartCard>
+  );
+}
+
 const TAB_ITEMS: TabItem[] = [
-  { id: "overview", label: "Overview",      icon: "chart-line" },
-  { id: "carrier",  label: "Carrier Sales", icon: "steering-wheel" },
-  { id: "quality",  label: "Quality",       icon: "sparkle" },
+  { id: "overview", label: "Overview", icon: "chart-line" },
+  { id: "meetings", label: "Meetings", icon: "calendar-check" },
 ];
 
 /* ── Page ────────────────────────────────────────────────────────────── */
@@ -1091,9 +1169,14 @@ export default function AnalyticsPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   <Grid columns={3} gap="md">
                     <KpiCard label="Total calls"        value={dora.total_calls.toLocaleString()} icon="phone" tone="brand" />
+                    <KpiCard label="Meetings booked"    value={String(dora.total_booked ?? 0)} icon="calendar-check" tone="success" />
+                    <KpiCard label="Booking rate"       value={`${bookingPct.toFixed(1)}%`} icon="trophy" tone="success" />
+                    <KpiCard label="Qualified"          value={String(dora.total_successful ?? 0)} icon="check-circle" tone="info" />
                     <KpiCard label="Total call minutes" value={totalMinutes.toLocaleString()}     icon="clock" tone="info" />
                     <KpiCard label="Avg call duration"  value={fmtDur(dora.avg_call_duration_sec)} icon="timer" tone="neutral" />
                   </Grid>
+
+                  {hasFunnel && <FunnelCard stages={dora.funnel!} days={days} />}
 
                   <ChartCard title="Calls per day" subtitle={`${dora.total_calls.toLocaleString()} calls in the last ${days} days`}>
                     {callsPerDay.some(d => d.count > 0) ? (
@@ -1127,33 +1210,8 @@ export default function AnalyticsPage() {
                 </div>
               )}
 
-              {/* ── CARRIER SALES ────────────────────────────────────────── */}
-              {tab === "carrier" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
-                    <KpiCard label="Booking rate"          value={`${bookingPct.toFixed(1)}%`} icon="trophy" tone="success" />
-                    <KpiCard label="Avg negotiation rounds" value={dora.avg_negotiation_attempts > 0 ? dora.avg_negotiation_attempts.toFixed(1) : "—"} icon="arrows-clockwise" tone="neutral" />
-                    <KpiCard label="Deals closed"          value={dora.total_booked != null ? String(dora.total_booked) : "—"} icon="check-circle" tone="success" />
-                    <KpiCard label="Transfers"             value={dora.total_transferred != null ? String(dora.total_transferred) : "—"} icon="arrow-bend-up-right" tone="info" />
-                    <KpiCard label="Goal achieved"         value={auditMetrics?.goal_achieved_rate != null ? `${(auditMetrics.goal_achieved_rate * 100).toFixed(0)}%` : "—"} icon="target" tone="brand" />
-                  </div>
-
-                  {hasFunnel ? (
-                    <FunnelCard stages={dora.funnel!} days={days} />
-                  ) : (
-                    <ChartCard title="Carrier sales conversion funnel" subtitle={`Last ${days} days`}>
-                      <ChartEmpty message="No carrier_sales calls in this window yet" />
-                    </ChartCard>
-                  )}
-                  {hasNegDepth ? (
-                    <NegotiationDepthCard buckets={dora.negotiation_depth!} days={days} />
-                  ) : (
-                    <ChartCard title="Negotiation depth" subtitle={`Last ${days} days`}>
-                      <ChartEmpty message="No negotiation data in this window yet" />
-                    </ChartCard>
-                  )}
-                </div>
-              )}
+              {/* ── MEETINGS BOOKED ──────────────────────────────────────── */}
+              {tab === "meetings" && <MeetingsBooked days={days} />}
 
               {/* ── QUALITY ──────────────────────────────────────────────── */}
               {tab === "quality" && (

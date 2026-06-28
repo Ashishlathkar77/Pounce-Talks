@@ -73,6 +73,9 @@ class CallLog(Base):
         nullable=True,
     )
     meeting_link: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Scheduled demo time (spoken label) + the email the prospect gave on the call.
+    agreed_meeting_time: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prospect_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # ── Timestamps ────────────────────────────────────────────────────────────
     started_at: Mapped[datetime] = mapped_column(
