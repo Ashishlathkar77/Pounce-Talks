@@ -8,15 +8,15 @@ import { Campaign, Lead } from "@/lib/types";
 import {
   ArrowLeft, Phone, CheckCircle2, Clock,
   Zap, Play, Pause, X, Users, CalendarCheck, Loader2,
-  ChevronRight, PhoneCall, PhoneOff, PhoneMissed,
+  ChevronRight, PhoneCall, PhoneOff, PhoneMissed, Pencil,
 } from "lucide-react";
 
 // Only the top N leads are shown / callable per campaign.
 const MAX_LEADS = 10;
 
 // Shared column template for the leads table (header + rows must match).
-// checkbox | Name | Company | Phone | Email | Location | Employees | Status | Score
-const LEAD_GRID = "44px 1.2fr 1.2fr 1.15fr 1.3fr 1.1fr 92px 104px 58px";
+// checkbox | edit | Name | Company | Phone | Email | Location | Employees | Status | Score
+const LEAD_GRID = "44px 36px 1.2fr 1.2fr 1.15fr 1.3fr 1.1fr 92px 104px 58px";
 
 // Visible vertical column divider + a full-height cell wrapper so the line
 // spans the whole row/header.
@@ -271,12 +271,13 @@ function NextActionCard({
 // ── Inline editable cell ──────────────────────────────────────────────────────
 
 function EditableCell({
-  value, placeholder, mono, center, onSave,
+  value, placeholder, mono, center, inputId, onSave,
 }: {
   value: string;
   placeholder?: string;
   mono?: boolean;
   center?: boolean;
+  inputId?: string;
   onSave: (next: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
@@ -287,6 +288,7 @@ function EditableCell({
   const dirty = draft !== value;
   return (
     <input
+      id={inputId}
       value={draft}
       placeholder={placeholder}
       onChange={(e) => setDraft(e.target.value)}
@@ -749,7 +751,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           <div style={{
             display: "grid",
             gridTemplateColumns: LEAD_GRID,
-            minWidth: 980,
+            minWidth: 1020,
             padding: "0 16px",
             height: 40,
             background: "var(--bg-neutral-secondary)",
@@ -758,6 +760,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           }}>
             <div style={{ ...LEAD_CELL, justifyContent: "center", borderRight: COL_LINE }}>
               <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
+            </div>
+            <div style={{ ...LEAD_CELL, justifyContent: "center", borderRight: COL_LINE, padding: 0 }}>
+              <Pencil style={{ width: 12, height: 12, color: "var(--text-neutral-secondary)" }} />
             </div>
             {["Name", "Company", "Phone", "Email", "Location", "Employees", "Status", "Score"].map((h, i, arr) => (
               <div key={h} style={{ ...LEAD_CELL, justifyContent: "center", borderRight: i < arr.length - 1 ? COL_LINE : "none" }}>
@@ -800,7 +805,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 style={{
                   display: "grid",
                   gridTemplateColumns: LEAD_GRID,
-                  minWidth: 980,
+                  minWidth: 1020,
                   padding: "0 16px",
                   height: 52,
                   cursor: "pointer",
@@ -818,9 +823,31 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   <Checkbox checked={isSelected} onChange={() => toggleOne(lead.id)} />
                 </div>
 
+                {/* Edit affordance — focuses the row's first editable field */}
+                <div style={{ ...LEAD_CELL, justifyContent: "center", borderRight: COL_LINE, padding: 0 }}>
+                  <button
+                    title="Edit this lead"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      document.getElementById(`lead-name-${lead.id}`)?.focus();
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 24, height: 24, borderRadius: 6, cursor: "pointer",
+                      background: "transparent", border: "1px solid var(--border-neutral-subtle)",
+                      color: "var(--text-neutral-secondary)",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,211,59,0.12)"; e.currentTarget.style.color = "#FFD33B"; e.currentTarget.style.borderColor = "rgba(255,211,59,0.4)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-neutral-secondary)"; e.currentTarget.style.borderColor = "var(--border-neutral-subtle)"; }}
+                  >
+                    <Pencil style={{ width: 12, height: 12 }} />
+                  </button>
+                </div>
+
                 {/* Name (editable) */}
                 <div style={{ ...LEAD_CELL, borderRight: COL_LINE }} onClick={(e) => e.stopPropagation()}>
                   <EditableCell value={lead.name || ""} placeholder="Name" center
+                    inputId={`lead-name-${lead.id}`}
                     onSave={(v) => updateLeadField(lead.id, "name", v)} />
                 </div>
 
