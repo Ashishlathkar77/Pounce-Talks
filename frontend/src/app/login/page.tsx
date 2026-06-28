@@ -1,225 +1,55 @@
 "use client";
 
-import { useState, FormEvent, Suspense, useEffect, useRef } from "react";
+import { useState, FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const MONO = "'JetBrains Mono','Fira Code','Cascadia Code','Courier New',monospace";
-const G    = "#4ade80";   // primary green
-const G2   = "rgba(74,222,128,0.45)";
-const G3   = "rgba(74,222,128,0.18)";
-const G4   = "rgba(74,222,128,0.08)";
-const BG   = "#0b0f0b";
-
-// ── Blinking cursor ───────────────────────────────────────────────────────────
-function Cursor({ on = true }: { on?: boolean }) {
-  const [vis, setVis] = useState(true);
-  useEffect(() => {
-    if (!on) return;
-    const t = setInterval(() => setVis(v => !v), 520);
-    return () => clearInterval(t);
-  }, [on]);
+function CatMark({ size = 48, color = "currentColor" }: { size?: number; color?: string }) {
   return (
-    <span style={{
-      display: "inline-block", width: 7, height: 14,
-      background: on && vis ? G : "transparent",
-      verticalAlign: "middle", marginLeft: 1,
-    }} />
+    <svg width={size} height={size} viewBox="0 0 22 22" fill="none"
+      stroke={color} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="13" r="8" strokeWidth="1.5" />
+      <path d="M4 10 L3 2 L9 7" strokeWidth="1.5" />
+      <path d="M13 7 L19 2 L18 10" strokeWidth="1.5" />
+      <circle cx="8" cy="12" r="1.2" fill={color} stroke="none" />
+      <circle cx="14" cy="12" r="1.2" fill={color} stroke="none" />
+      <path d="M10 14.5 L11 15.5 L12 14.5" strokeWidth="1.2" />
+      <line x1="1"  y1="13.5" x2="7.5"  y2="14"   strokeWidth="0.7" />
+      <line x1="1"  y1="15.5" x2="7.5"  y2="15.5" strokeWidth="0.7" />
+      <line x1="21" y1="13.5" x2="14.5" y2="14"   strokeWidth="0.7" />
+      <line x1="21" y1="15.5" x2="14.5" y2="15.5" strokeWidth="0.7" />
+    </svg>
   );
 }
 
-// ── Typewriter ────────────────────────────────────────────────────────────────
-function TW({ text, delay = 0, speed = 22, color = G2 }: {
-  text: string; delay?: number; speed?: number; color?: string;
-}) {
-  const [shown, setShown] = useState(delay > 0 ? "" : text);
-  const done = useRef(delay === 0);
-  useEffect(() => {
-    if (done.current) return;
-    let i = 0;
-    const t = setTimeout(() => {
-      const iv = setInterval(() => {
-        i++;
-        setShown(text.slice(0, i));
-        if (i >= text.length) { done.current = true; clearInterval(iv); }
-      }, speed);
-      return () => clearInterval(iv);
-    }, delay);
-    return () => clearTimeout(t);
-  }, []);
-  return <span style={{ color, fontFamily: MONO }}>{shown}</span>;
-}
-
-// ── Left: terminal info panel ─────────────────────────────────────────────────
-function InfoPanel() {
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div style={{
-      flex: "0 0 75%", borderRight: `1px solid ${G3}`,
-      padding: "44px 52px", display: "flex", flexDirection: "column",
-      gap: 36, overflowY: "auto",
-    }}>
-
-      {/* Prompt + ASCII brand */}
-      <div>
-        <div style={{ fontSize: 11, color: G2, fontFamily: MONO, marginBottom: 14 }}>
-          <TW text="$ pounce --info" delay={0} color={G} />
-        </div>
-
-        {/* Block-letter POUNCE */}
-        <pre style={{
-          margin: 0, fontFamily: MONO, fontSize: 13, lineHeight: 1.25,
-          color: G, letterSpacing: "0.04em", userSelect: "none",
-        }}>{`
- ██████╗  ██████╗ ██╗   ██╗███╗  ██╗ ██████╗███████╗
- ██╔══██╗██╔═══██╗██║   ██║████╗ ██║██╔════╝██╔════╝
- ██████╔╝██║   ██║██║   ██║██╔██╗██║██║     █████╗
- ██╔═══╝ ██║   ██║██║   ██║██║╚████║██║     ██╔══╝
- ██║     ╚██████╔╝╚██████╔╝██║ ╚███║╚██████╗███████╗
- ╚═╝      ╚═════╝  ╚═════╝ ╚═╝  ╚══╝ ╚═════╝╚══════╝
-`.trim()}</pre>
-
-        <div style={{
-          marginTop: 14, fontSize: 12, fontFamily: MONO,
-          color: G2, letterSpacing: "0.04em",
-        }}>
-          <TW text="AI Outbound SDR · Freight Industry · v1.0.0-stable" delay={400} />
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{ borderTop: `1px solid ${G3}` }} />
-
-      {/* System output */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-        <div style={{ fontSize: 11, color: G3, fontFamily: MONO, marginBottom: 4 }}>
-          <TW text="$ pounce --describe" delay={700} color={G3} />
-        </div>
-        {[
-          ["Dials freight prospects live on the phone", 900],
-          ["Qualifies with 3 smart discovery questions", 1100],
-          ["Books demos directly into your calendar", 1300],
-          ["Transcribes and scores every call automatically", 1500],
-          ["Runs 24/7 — zero human effort on your end", 1700],
-        ].map(([text, delay]) => (
-          <div key={text as string} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <span style={{ color: G3, fontFamily: MONO, fontSize: 12, userSelect: "none", flexShrink: 0 }}>▸</span>
-            <span style={{ fontSize: 12, fontFamily: MONO }}>
-              <TW text={text as string} delay={delay as number} color={G2} />
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Divider */}
-      <div style={{ borderTop: `1px solid ${G3}` }} />
-
-      {/* Stats as terminal readout */}
-      <div>
-        <div style={{ fontSize: 11, color: G3, fontFamily: MONO, marginBottom: 14 }}>
-          <TW text="$ pounce --stats" delay={1900} color={G3} />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[
-            { key: "time_to_first_word", val: "< 2s",  bar: 0.96, delay: 2100 },
-            { key: "questions_to_qualify", val: "3",    bar: 0.30, delay: 2250 },
-            { key: "qualification_rate",   val: "43%",  bar: 0.43, delay: 2400 },
-            { key: "demo_book_rate",       val: "31%",  bar: 0.31, delay: 2550 },
-            { key: "uptime",               val: "99.9%",bar: 0.999,delay: 2700 },
-          ].map(({ key, val, bar, delay }) => (
-            <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, fontFamily: MONO, fontSize: 11 }}>
-              <span style={{ color: G3, width: 180, flexShrink: 0 }}>
-                <TW text={key} delay={delay} color={G3} speed={14} />
-              </span>
-              <BarLine pct={bar} delay={delay + 100} />
-              <span style={{ color: G, fontWeight: 700, width: 44 }}>
-                <TW text={val} delay={delay + 200} color={G} speed={14} />
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{ borderTop: `1px solid ${G3}` }} />
-
-      {/* Capabilities */}
-      <div>
-        <div style={{ fontSize: 11, color: G3, fontFamily: MONO, marginBottom: 14 }}>
-          <TW text="$ pounce --modules" delay={2900} color={G3} />
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {[
-            ["COMMAND","AI layer on existing TMS"],
-            ["CORE","End-to-end AI-native TMS"],
-            ["FORGE","RFP bidding & lane mgmt"],
-            ["REACH","AI outbound SDR (this)"],
-            ["CUSTOM","Bespoke full-stack builds"],
-          ].map(([name, desc]) => (
-            <div key={name} style={{
-              border: `1px solid ${G3}`, borderRadius: 6,
-              padding: "7px 12px",
-              display: "flex", flexDirection: "column", gap: 2,
-              background: G4,
-            }}>
-              <span style={{ fontSize: 10, fontFamily: MONO, color: G, fontWeight: 700, letterSpacing: "0.08em" }}>
-                {name}
-              </span>
-              <span style={{ fontSize: 10, fontFamily: MONO, color: G3 }}>{desc}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Bottom prompt */}
-      <div style={{ fontSize: 11, fontFamily: MONO, color: G3, marginTop: "auto" }}>
-        <TW text="# authenticate on the right to access your workspace →" delay={3200} color={G3} />
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.04em" }}>
+        {value}
+      </span>
+      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase" }}>
+        {label}
+      </span>
     </div>
   );
 }
 
-// ── Animated progress bar ─────────────────────────────────────────────────────
-function BarLine({ pct, delay }: { pct: number; delay: number }) {
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setW(pct), delay);
-    return () => clearTimeout(t);
-  }, [pct, delay]);
-  const total = 20;
-  const filled = Math.round(w * total);
-  return (
-    <span style={{ fontFamily: MONO, fontSize: 11, color: G3, userSelect: "none", transition: "all 0.6s" }}>
-      {"▓".repeat(filled)}{"░".repeat(total - filled)}
-    </span>
-  );
-}
-
-// ── Right: terminal login ─────────────────────────────────────────────────────
-function LoginPanel() {
+function LoginForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const next         = searchParams.get("next") || "/campaigns";
 
-  const [mode,      setMode]      = useState<"login"|"signup">("login");
-  const [email,     setEmail]     = useState("");
-  const [password,  setPassword]  = useState("");
-  const [error,     setError]     = useState("");
-  const [loading,   setLoading]   = useState(false);
-  const [logLines,  setLogLines]  = useState<{ text: string; ok?: boolean }[]>([]);
-  const [emailFocus, setEmailFocus] = useState(false);
-  const [passFocus,  setPassFocus]  = useState(false);
+  const [tab,      setTab]      = useState<"login" | "signup">("login");
+  const [email,    setEmail]    = useState("");
+  const [password, setPassword] = useState("");
+  const [error,    setError]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [focused,  setFocused]  = useState<string | null>(null);
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
-    setError(""); setLogLines([]); setLoading(true);
-    const steps = [
-      "connecting to pounce-auth.sdr...",
-      "verifying identity...",
-      "checking workspace permissions...",
-    ];
-    for (const s of steps) {
-      await new Promise(r => setTimeout(r, 320));
-      setLogLines(p => [...p, { text: s }]);
-    }
+    setError("");
+    setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -227,267 +57,339 @@ function LoginPanel() {
         body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
-        setLogLines(p => [...p, { text: "✓ authenticated. loading workspace...", ok: true }]);
-        await new Promise(r => setTimeout(r, 480));
         router.push(next);
       } else {
         const { error: msg } = await res.json().catch(() => ({}));
-        setLogLines([]);
-        setError(msg || "authentication failed.");
-        setLoading(false);
+        setError(msg || "Invalid email or password.");
       }
     } catch {
-      setLogLines([]);
-      setError("connection refused. check network.");
+      setError("Network error — try again.");
+    } finally {
       setLoading(false);
     }
   }
 
   function handleSignup(e: FormEvent) {
     e.preventDefault();
-    setError("invite-only. contact team@pounce.ai");
+    setError("Pounce is invite-only. Reach out to get access.");
   }
 
-  const inputStyle: React.CSSProperties = {
-    background: "transparent", border: "none", outline: "none",
-    color: G, fontFamily: MONO, fontSize: 13,
-    flex: 1, caretColor: G, letterSpacing: "0.02em", padding: 0,
-    minWidth: 0,
-  };
+  const inputStyle = (name: string) => ({
+    width: "100%",
+    padding: "11px 14px",
+    borderRadius: 10,
+    border: `1.5px solid ${focused === name ? "#a78bfa" : "#e4e4e7"}`,
+    fontSize: 14,
+    outline: "none",
+    fontFamily: "inherit",
+    boxSizing: "border-box" as const,
+    transition: "border-color 0.15s, box-shadow 0.15s",
+    color: "#09090b",
+    background: "#fff",
+    boxShadow: focused === name ? "0 0 0 3px rgba(167,139,250,0.12)" : "none",
+  });
 
   return (
-    <div style={{
-      flex: 1, padding: "44px 28px",
-      display: "flex", flexDirection: "column", justifyContent: "center",
-      gap: 28,
-    }}>
-
-      {/* Header prompt */}
-      <div>
-        <div style={{ fontSize: 11, color: G3, fontFamily: MONO, marginBottom: 6 }}>
-          pounce-sdr  ·  auth module
-        </div>
-        <div style={{ fontSize: 11, color: G2, fontFamily: MONO }}>
-          $ login --workspace pounce.ai
-        </div>
-      </div>
-
-      {/* Mode tabs */}
-      <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${G3}` }}>
-        {(["login","signup"] as const).map(m => (
-          <button key={m} type="button"
-            onClick={() => { setMode(m); setError(""); setLogLines([]); }}
+    <form onSubmit={tab === "login" ? handleLogin : handleSignup} style={{ width: "100%" }}>
+      {/* Tabs */}
+      <div style={{
+        display: "flex", borderRadius: 12, background: "#f4f4f5",
+        padding: 3, marginBottom: 28, gap: 2,
+      }}>
+        {(["login", "signup"] as const).map((t) => (
+          <button key={t} type="button"
+            onClick={() => { setTab(t); setError(""); }}
             style={{
-              background: "none", border: "none",
-              borderBottom: mode === m ? `1.5px solid ${G}` : "1.5px solid transparent",
-              color: mode === m ? G : G3,
-              fontFamily: MONO, fontSize: 11, padding: "5px 12px 7px",
-              cursor: "pointer", letterSpacing: "0.06em",
-              textTransform: "uppercase", marginBottom: -1,
+              flex: 1, padding: "8px 0", borderRadius: 9, border: "none",
+              cursor: "pointer", fontSize: 13, fontWeight: 600,
+              transition: "all 0.18s",
+              background: tab === t ? "#fff" : "transparent",
+              color: tab === t ? "#09090b" : "#71717a",
+              boxShadow: tab === t ? "0 1px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" : "none",
+              fontFamily: "inherit",
             }}>
-            {m === "login" ? "[ auth ]" : "[ request ]"}
+            {t === "login" ? "Sign in" : "Sign up"}
           </button>
         ))}
       </div>
 
-      {/* Form */}
-      <form onSubmit={mode === "login" ? handleLogin : handleSignup}
-        style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-
-        {/* Email */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: "8px 0", borderBottom: `1px solid ${emailFocus ? G3 : "rgba(74,222,128,0.06)"}`,
-          transition: "border-color 0.15s",
-        }}>
-          <span style={{ color: G3, fontFamily: MONO, fontSize: 11, whiteSpace: "nowrap", userSelect: "none" }}>
-            ~$
-          </span>
-          <span style={{ color: G2, fontFamily: MONO, fontSize: 11, userSelect: "none" }}>email</span>
-          <span style={{ color: G3, fontFamily: MONO, fontSize: 11, userSelect: "none" }}>▸</span>
-          <input type="email" value={email} required disabled={loading}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 6, letterSpacing: "0.01em" }}>
+            Email address
+          </label>
+          <input type="email" value={email} required
             placeholder="you@company.com"
-            onChange={e => setEmail(e.target.value)}
-            onFocus={() => setEmailFocus(true)}
-            onBlur={() => setEmailFocus(false)}
-            style={inputStyle}
+            onChange={(e) => setEmail(e.target.value)}
+            onFocus={() => setFocused("email")}
+            onBlur={() => setFocused(null)}
+            style={inputStyle("email")}
           />
-          {emailFocus && <Cursor />}
         </div>
 
-        {/* Password */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: "8px 0", borderBottom: `1px solid ${passFocus ? G3 : "rgba(74,222,128,0.06)"}`,
-          marginBottom: 16, transition: "border-color 0.15s",
-        }}>
-          <span style={{ color: G3, fontFamily: MONO, fontSize: 11, whiteSpace: "nowrap", userSelect: "none" }}>
-            ~$
-          </span>
-          <span style={{ color: G2, fontFamily: MONO, fontSize: 11, userSelect: "none" }}>passwd</span>
-          <span style={{ color: G3, fontFamily: MONO, fontSize: 11, userSelect: "none" }}>▸</span>
-          <input type="password" value={password} required disabled={loading}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#3f3f46", letterSpacing: "0.01em" }}>
+              Password
+            </label>
+          </div>
+          <input type="password" value={password} required
             placeholder="••••••••••"
-            onChange={e => setPassword(e.target.value)}
-            onFocus={() => setPassFocus(true)}
-            onBlur={() => setPassFocus(false)}
-            style={inputStyle}
+            onChange={(e) => setPassword(e.target.value)}
+            onFocus={() => setFocused("password")}
+            onBlur={() => setFocused(null)}
+            style={inputStyle("password")}
           />
-          {passFocus && <Cursor />}
         </div>
-
-        {/* Auth log */}
-        {logLines.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            {logLines.map((l, i) => (
-              <div key={i} style={{
-                fontFamily: MONO, fontSize: 10,
-                color: l.ok ? G : G2,
-                padding: "1px 0", letterSpacing: "0.02em",
-              }}>
-                {l.ok ? l.text : `  ${l.text}`}
-                {i === logLines.length - 1 && !l.ok && <Cursor />}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div style={{
-            fontFamily: MONO, fontSize: 10, color: "#f87171",
-            padding: "8px 10px", marginBottom: 10,
-            border: "1px solid rgba(248,113,113,0.15)",
-            borderRadius: 4, background: "rgba(248,113,113,0.04)",
-            letterSpacing: "0.02em",
-          }}>
-            <span style={{ color: "rgba(248,113,113,0.5)" }}>✗ error: </span>{error}
-          </div>
-        )}
-
-        {/* Submit */}
-        <button type="submit" disabled={loading}
-          style={{
-            background: loading ? G4 : "rgba(74,222,128,0.1)",
-            border: `1px solid ${loading ? G4 : G3}`,
-            borderRadius: 5, padding: "10px 0",
-            color: loading ? G3 : G,
-            fontFamily: MONO, fontSize: 11,
-            fontWeight: 600, cursor: loading ? "not-allowed" : "pointer",
-            letterSpacing: "0.1em", textTransform: "uppercase",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            transition: "all 0.15s",
-          }}
-          onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "rgba(74,222,128,0.16)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = loading ? G4 : "rgba(74,222,128,0.1)"; }}
-        >
-          {loading
-            ? <><span>authenticating</span><Cursor /></>
-            : <><span>▸</span><span>{mode === "login" ? "authenticate" : "send request"}</span></>
-          }
-        </button>
-      </form>
-
-      {/* Footer */}
-      <div style={{
-        fontFamily: MONO, fontSize: 10, color: G3,
-        lineHeight: 1.7, borderTop: `1px solid ${G4}`, paddingTop: 16,
-      }}>
-        <div># session: 7d · httpOnly cookie</div>
-        <div># invite-only workspace</div>
-        {mode === "signup" && <div># contact: team@pounce.ai</div>}
       </div>
-    </div>
+
+      {error && (
+        <div style={{
+          marginTop: 14, padding: "10px 14px", borderRadius: 10,
+          background: "#fff1f2", border: "1px solid #fecdd3",
+          fontSize: 13, color: "#e11d48", lineHeight: 1.4,
+        }}>
+          {error}
+        </div>
+      )}
+
+      <button type="submit" disabled={loading}
+        style={{
+          width: "100%", marginTop: 22, padding: "12px 0", borderRadius: 10,
+          border: "none", cursor: loading ? "not-allowed" : "pointer",
+          background: loading
+            ? "#e4e4e7"
+            : "linear-gradient(135deg, #1c1c1e 0%, #3f3f46 100%)",
+          color: loading ? "#a1a1aa" : "#fff",
+          fontSize: 14, fontWeight: 600, fontFamily: "inherit",
+          letterSpacing: "-0.01em",
+          transition: "opacity 0.15s, transform 0.1s",
+          boxShadow: loading ? "none" : "0 2px 12px rgba(0,0,0,0.18)",
+        }}
+        onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+      >
+        {loading ? "Signing in…" : tab === "login" ? "Continue →" : "Request access"}
+      </button>
+
+      <p style={{ textAlign: "center", fontSize: 12, color: "#a1a1aa", marginTop: 18, marginBottom: 0, lineHeight: 1.5 }}>
+        {tab === "login"
+          ? "Invite-only. Don't have access? "
+          : "We'll reach out within 24 hours. "}
+        <a href="mailto:team@pounce.ai"
+          style={{ color: "#71717a", textDecoration: "underline", textUnderlineOffset: 2 }}>
+          {tab === "login" ? "Get in touch" : "Questions?"}
+        </a>
+      </p>
+    </form>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
   return (
-    <>
-      <style>{`
-        * { box-sizing: border-box; }
-        body { margin: 0; background: ${BG}; }
-        input::placeholder { color: rgba(74,222,128,0.2) !important; font-family: ${MONO}; }
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover,
-        input:-webkit-autofill:focus {
-          -webkit-box-shadow: 0 0 0 1000px ${BG} inset !important;
-          -webkit-text-fill-color: ${G} !important;
-          caret-color: ${G};
-        }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.15); border-radius: 2px; }
-      `}</style>
+    <div style={{
+      display: "flex", minHeight: "100vh",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      WebkitFontSmoothing: "antialiased",
+    }}>
 
-      {/* Full-page scanline texture */}
+      {/* ── LEFT — dark brand panel ─────────────────────────────────────────── */}
       <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-        background: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px)",
-      }} />
-
-      {/* Terminal window */}
-      <div style={{
-        position: "relative", zIndex: 1,
-        minHeight: "100vh", display: "flex", flexDirection: "column",
-        background: BG,
+        flex: "0 0 52%",
+        background: "#09090b",
+        display: "flex", flexDirection: "column",
+        justifyContent: "space-between",
+        padding: "44px 56px",
+        position: "relative", overflow: "hidden",
       }}>
-        {/* Title bar */}
+
+        {/* Background glow blobs */}
         <div style={{
-          background: "#0f1a0f",
-          borderBottom: `1px solid ${G3}`,
-          padding: "10px 18px",
-          display: "flex", alignItems: "center", gap: 14,
-          flexShrink: 0,
+          position: "absolute", top: "-10%", left: "-5%",
+          width: 480, height: 480, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute", bottom: "5%", right: "-10%",
+          width: 360, height: 360, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute", top: "40%", right: "20%",
+          width: 200, height: 200, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(250,204,21,0.06) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Dot grid overlay */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          backgroundImage: "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+          maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)",
+        }} />
+
+        {/* Top wordmark */}
+        <div style={{ display: "flex", alignItems: "center", gap: 9, position: "relative", zIndex: 1 }}>
+          <CatMark size={26} color="rgba(255,255,255,0.9)" />
+          <span style={{
+            fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.92)",
+            letterSpacing: "-0.04em",
+          }}>
+            Pounce
+          </span>
+        </div>
+
+        {/* Center hero */}
+        <div style={{
+          position: "relative", zIndex: 1,
+          display: "flex", flexDirection: "column", gap: 36,
         }}>
-          <div style={{ display: "flex", gap: 7 }}>
-            {["#ff5f57","#febc2e","#28c840"].map(c => (
-              <div key={c} style={{ width: 12, height: 12, borderRadius: "50%", background: c, opacity: 0.9 }} />
+          {/* Big cat mark */}
+          <div style={{
+            width: 72, height: 72, borderRadius: 20,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            backdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 0 40px rgba(124,58,237,0.2)",
+          }}>
+            <CatMark size={40} color="rgba(255,255,255,0.85)" />
+          </div>
+
+          <div>
+            <h1 style={{
+              fontSize: 42, fontWeight: 800, color: "#fff",
+              letterSpacing: "-0.05em", lineHeight: 1.08,
+              margin: 0, marginBottom: 16,
+            }}>
+              Your AI SDR,<br />
+              always on<br />
+              <span style={{
+                background: "linear-gradient(90deg, #a78bfa, #34d399)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}>
+                the phone.
+              </span>
+            </h1>
+            <p style={{
+              fontSize: 14, color: "rgba(255,255,255,0.42)",
+              lineHeight: 1.7, maxWidth: 320, margin: 0,
+            }}>
+              Pounce dials your freight prospects, qualifies them live,
+              and books demos — with zero human effort on your end.
+            </p>
+          </div>
+
+          {/* Capability pills */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {[
+              "Live outbound calls",
+              "AI qualification",
+              "Auto demo booking",
+              "CRM sync",
+              "Real-time transcripts",
+              "Freight-native",
+            ].map((pill) => (
+              <span key={pill} style={{
+                fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.55)",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 100, padding: "5px 11px",
+                letterSpacing: "0.01em",
+              }}>
+                {pill}
+              </span>
             ))}
           </div>
-          <span style={{
-            flex: 1, textAlign: "center",
-            fontFamily: MONO, fontSize: 11, color: G3, letterSpacing: "0.05em",
+
+          {/* Stats */}
+          <div style={{
+            display: "flex", gap: 36,
+            paddingTop: 28,
+            borderTop: "1px solid rgba(255,255,255,0.07)",
           }}>
-            pounce-sdr  —  bash  —  auth@workspace
-          </span>
-          <span style={{ fontFamily: MONO, fontSize: 10, color: G4 }}>v1.0.0</span>
+            <Stat value="< 2s"  label="Time to first word" />
+            <Stat value="3 Qs"  label="To qualify a lead" />
+            <Stat value="24/7"  label="Always dialing" />
+          </div>
         </div>
 
-        {/* Body — info + login side by side */}
-        <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-          <InfoPanel />
-          <div style={{ borderLeft: `1px solid ${G3}` }} />
-          <Suspense>
-            <LoginPanel />
-          </Suspense>
-        </div>
-
-        {/* Status bar */}
+        {/* Bottom */}
         <div style={{
-          background: G, padding: "3px 18px",
-          display: "flex", alignItems: "center", gap: 20,
-          flexShrink: 0,
+          position: "relative", zIndex: 1,
+          fontSize: 11, color: "rgba(255,255,255,0.2)",
+          letterSpacing: "0.02em",
         }}>
-          {[
-            "POUNCE SDR",
-            "AI OUTBOUND",
-            "FREIGHT INDUSTRY",
-            "WORKSPACE: pounce.ai",
-          ].map(s => (
-            <span key={s} style={{
-              fontFamily: MONO, fontSize: 10, fontWeight: 700,
-              color: "#0b0f0b", letterSpacing: "0.07em",
-            }}>
-              {s}
-            </span>
-          ))}
-          <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 10, color: "rgba(11,15,11,0.6)" }}>
-            UTF-8  ·  LF  ·  AUTH
-          </span>
+          POUNCE · AI OUTBOUND SDR
         </div>
       </div>
-    </>
+
+      {/* ── RIGHT — auth panel ──────────────────────────────────────────────── */}
+      <div style={{
+        flex: 1,
+        background: "#fafafa",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        padding: "48px 40px",
+        position: "relative",
+      }}>
+        {/* Subtle top border */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0,
+          height: 1, background: "linear-gradient(90deg, transparent, #e4e4e7 30%, #e4e4e7 70%, transparent)",
+        }} />
+
+        <div style={{ width: "100%", maxWidth: 368 }}>
+          {/* Header */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "4px 10px", borderRadius: 100,
+              background: "#f0fdf4", border: "1px solid #bbf7d0",
+              marginBottom: 20,
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#16a34a", letterSpacing: "0.02em" }}>
+                System online
+              </span>
+            </div>
+            <h2 style={{
+              fontSize: 24, fontWeight: 700, color: "#09090b",
+              letterSpacing: "-0.04em", margin: 0, marginBottom: 6,
+            }}>
+              Welcome back
+            </h2>
+            <p style={{ fontSize: 13, color: "#a1a1aa", margin: 0 }}>
+              Sign in to your Pounce workspace
+            </p>
+          </div>
+
+          {/* Form card */}
+          <div style={{
+            background: "#fff",
+            borderRadius: 16,
+            border: "1px solid #e4e4e7",
+            padding: "28px 28px 24px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.04)",
+          }}>
+            <Suspense>
+              <LoginForm />
+            </Suspense>
+          </div>
+
+          {/* Footer note */}
+          <p style={{
+            textAlign: "center", fontSize: 11, color: "#d4d4d8",
+            marginTop: 24, letterSpacing: "0.01em",
+          }}>
+            Protected workspace · Session expires in 7 days
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
