@@ -83,13 +83,30 @@ async def dora_metrics(
         "outcome_distribution": [
             {"outcome": k, "count": v} for k, v in outcome_counts.items()
         ],
-        "funnel": [
-            {"stage": "Dialed",    "count": total_calls},
-            {"stage": "Connected", "count": max(0, total_calls - no_answer)},
-            {"stage": "Qualified", "count": qualified},
-            {"stage": "Booked",    "count": booked},
-        ],
+        "funnel": _funnel([
+            ("dialed",    "Dialed",    total_calls),
+            ("connected", "Connected", max(0, total_calls - no_answer)),
+            ("qualified", "Qualified", qualified),
+            ("booked",    "Booked",    booked),
+        ], total_calls),
     }
+
+
+def _funnel(stages, total):
+    """Build funnel rows with pct_of_total + pct_of_previous (UI expects both)."""
+    out = []
+    prev = None
+    for key, label, count in stages:
+        out.append({
+            "key": key,
+            "label": label,
+            "stage": label,
+            "count": count,
+            "pct_of_total": round(count / total, 4) if total else 0.0,
+            "pct_of_previous": (round(count / prev, 4) if prev else None),
+        })
+        prev = count
+    return out
 
 
 @router.get("/meetings")
