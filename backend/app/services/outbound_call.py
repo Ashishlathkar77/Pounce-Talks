@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.call_log import CallLog
+from app.models.campaign import Campaign
 from app.models.lead import Lead
 
 log = structlog.get_logger(__name__)
@@ -242,6 +243,22 @@ class OutboundCallService:
         await db.execute(
             update(Lead).where(Lead.id == call_log.lead_id).values(**lead_values)
         )
+
+        # Increment campaign KPI counters atomically.
+        if call_log.campaign_id:
+            cam_increments: dict = {}
+            if outcome == "meeting_booked":
+                cam_increments["total_booked"] = Campaign.total_booked + 1
+                cam_increments["total_qualified"] = Campaign.total_qualified + 1
+            elif outcome == "qualified":
+                cam_increments["total_qualified"] = Campaign.total_qualified + 1
+            if cam_increments:
+                await db.execute(
+                    update(Campaign)
+                    .where(Campaign.id == call_log.campaign_id)
+                    .values(**cam_increments)
+                )
+
         await db.commit()
         log.info("call_outcome_updated", call_log_id=call_log_id, outcome=outcome, duration=duration)
 

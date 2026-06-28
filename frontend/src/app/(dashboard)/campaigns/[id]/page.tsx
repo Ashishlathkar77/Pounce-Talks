@@ -90,8 +90,8 @@ function StepPipeline({ step }: { step: StepId }) {
   return (
     <div style={{
       display: "flex", alignItems: "stretch",
-      background: "var(--bg-surface)",
-      border: "1px solid var(--border)",
+      background: "var(--bg-neutral-primary)",
+      border: "1px solid var(--border-neutral-secondary)",
       borderRadius: 14, overflow: "hidden",
       marginBottom: "2rem",
     }}>
@@ -111,17 +111,17 @@ function StepPipeline({ step }: { step: StepId }) {
                 width: 0, height: 0,
                 borderTop: "10px solid transparent",
                 borderBottom: "10px solid transparent",
-                borderLeft: `13px solid ${done ? "rgba(34,197,94,0.3)" : active ? "rgba(255,211,59,0.3)" : "var(--border)"}`,
+                borderLeft: `13px solid ${done ? "rgba(34,197,94,0.3)" : active ? "rgba(255,211,59,0.3)" : "var(--border-neutral-secondary)"}`,
               }} />
             )}
             <div style={{
               padding: "1.125rem 1rem",
               background: done
-                ? "rgba(34,197,94,0.06)"
+                ? "rgba(34,197,94,0.08)"
                 : active
-                ? "rgba(255,211,59,0.07)"
-                : "transparent",
-              borderRight: i < STEPS.length - 1 ? "1px solid var(--border)" : "none",
+                ? "rgba(255,211,59,0.09)"
+                : "var(--bg-neutral-secondary)",
+              borderRight: i < STEPS.length - 1 ? "1px solid var(--border-neutral-secondary)" : "none",
               display: "flex", flexDirection: "column", gap: 5,
               transition: "background 0.3s ease",
               minWidth: 0,
@@ -134,21 +134,21 @@ function StepPipeline({ step }: { step: StepId }) {
                     ? "rgba(34,197,94,0.18)"
                     : active
                     ? "rgba(255,211,59,0.18)"
-                    : "var(--bg-elevated)",
-                  border: `1px solid ${done ? "rgba(34,197,94,0.4)" : active ? "rgba(255,211,59,0.4)" : "var(--border)"}`,
+                    : "var(--bg-neutral-tertiary)",
+                  border: `1px solid ${done ? "rgba(34,197,94,0.4)" : active ? "rgba(255,211,59,0.4)" : "var(--border-neutral-subtle)"}`,
                 }}>
                   {done ? (
                     <CheckCircle2 style={{ width: 12, height: 12, color: "#22c55e" }} />
                   ) : (
                     <Icon style={{
                       width: 11, height: 11,
-                      color: active ? "#FFD33B" : "var(--text-muted)",
+                      color: active ? "#FFD33B" : "var(--text-neutral-secondary)",
                     }} />
                   )}
                 </div>
                 <span style={{
                   fontSize: "0.6875rem", fontWeight: active || done ? 700 : 500,
-                  color: done ? "#22c55e" : active ? "#FFD33B" : "var(--text-muted)",
+                  color: done ? "#22c55e" : active ? "#FFD33B" : "var(--text-neutral-secondary)",
                   letterSpacing: "-0.01em", lineHeight: 1.2,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
@@ -163,7 +163,7 @@ function StepPipeline({ step }: { step: StepId }) {
                 )}
               </div>
               <span style={{
-                fontSize: "0.625rem", color: "var(--text-muted)",
+                fontSize: "0.625rem", color: "var(--text-neutral-secondary)",
                 paddingLeft: 28, lineHeight: 1.3,
                 display: pending ? "none" : "block",
               }}>
@@ -227,10 +227,10 @@ function NextActionCard({
         <div style={{ fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#FFD33B", marginBottom: 4 }}>
           Next Step
         </div>
-        <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>
+        <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-neutral-primary)", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>
           {cfg.title}
         </div>
-        <div style={{ fontSize: "0.8125rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+        <div style={{ fontSize: "0.8125rem", color: "var(--text-neutral-secondary)", lineHeight: 1.6 }}>
           {cfg.body}
         </div>
       </div>
@@ -238,8 +238,8 @@ function NextActionCard({
         {cfg.secondary && (
           <button onClick={cfg.secondary.action} style={{
             padding: "0.5rem 1rem", borderRadius: 8,
-            background: "transparent", border: "1px solid var(--border)",
-            color: "var(--text-secondary)", fontSize: "0.8125rem", fontWeight: 600,
+            background: "transparent", border: "1px solid var(--border-neutral-secondary)",
+            color: "var(--text-neutral-secondary)", fontSize: "0.8125rem", fontWeight: 600,
             cursor: "pointer", fontFamily: "inherit",
           }}>
             {cfg.secondary.label}
@@ -480,8 +480,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   if (!campaign) {
     return (
       <div style={{ padding: "2.5rem", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300, gap: "0.75rem" }}>
-        <Loader2 style={{ width: 20, height: 20, color: "var(--text-muted)", animation: "spin 1s linear infinite" }} />
-        <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>Loading campaign…</span>
+        <Loader2 style={{ width: 20, height: 20, color: "var(--text-neutral-secondary)", animation: "spin 1s linear infinite" }} />
+        <span style={{ fontSize: "0.875rem", color: "var(--text-neutral-secondary)" }}>Loading campaign…</span>
       </div>
     );
   }
@@ -500,14 +500,14 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", minWidth: 0 }}>
           <Link href="/campaigns" style={{
             display: "flex", alignItems: "center", gap: "0.375rem",
-            color: "var(--text-muted)", textDecoration: "none", fontSize: "0.8125rem", flexShrink: 0,
+            color: "var(--text-neutral-secondary)", textDecoration: "none", fontSize: "0.8125rem", flexShrink: 0,
           }}>
             <ArrowLeft style={{ width: 14, height: 14 }} />
             Campaigns
           </Link>
-          <span style={{ color: "var(--border)" }}>/</span>
+          <span style={{ color: "var(--text-neutral-tertiary)" }}>/</span>
           <span style={{
-            fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)",
+            fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-neutral-primary)",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280,
           }}>
             {campaign.name}
@@ -610,21 +610,21 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       {/* ── Stats bar ─────────────────────────────────────────────────────── */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1px",
-        background: "var(--border)", border: "1px solid var(--border)",
+        background: "var(--border-neutral-secondary)", border: "1px solid var(--border-neutral-secondary)",
         borderRadius: 12, overflow: "hidden", marginBottom: "2rem",
       }}>
         {[
-          { icon: Users,       label: "Total Leads",     value: leads.length,              color: "var(--text-primary)",  sub: null },
-          { icon: Phone,       label: "Dialed",          value: campaign.total_dialed,      color: "var(--text-primary)",  sub: `of ${campaign.total_targets || leads.length}` },
+          { icon: Users,       label: "Total Leads",     value: leads.length,              color: "var(--text-neutral-primary)",  sub: null },
+          { icon: Phone,       label: "Dialed",          value: campaign.total_dialed,      color: "var(--text-neutral-primary)",  sub: `of ${campaign.total_targets || leads.length}` },
           { icon: CheckCircle2,label: "Qualified",       value: campaign.total_qualified,   color: "#22c55e",              sub: null },
           { icon: CalendarCheck,label: "Meetings Booked",value: campaign.total_booked,      color: "#818cf8",              sub: null },
-          { icon: PhoneCall,   label: "Calling Now",     value: callingLeads.length,        color: callingLeads.length > 0 ? "#FFD33B" : "var(--text-muted)", sub: null },
+          { icon: PhoneCall,   label: "Calling Now",     value: callingLeads.length,        color: callingLeads.length > 0 ? "#FFD33B" : "var(--text-neutral-secondary)", sub: null },
         ].map(({ icon: Icon, label, value, color, sub }, i) => (
-          <div key={i} style={{ background: "var(--bg-surface)", padding: "1rem", textAlign: "center" }}>
+          <div key={i} style={{ background: "var(--bg-neutral-primary)", padding: "1rem", textAlign: "center" }}>
             <Icon style={{ width: 16, height: 16, color, margin: "0 auto 0.375rem" }} />
             <div style={{ fontSize: "1.75rem", fontWeight: 900, letterSpacing: "-0.04em", color, lineHeight: 1 }}>{value}</div>
-            <div style={{ fontSize: "0.5625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginTop: 3 }}>{label}</div>
-            {sub && <div style={{ fontSize: "0.5625rem", color: "var(--text-muted)", marginTop: 2 }}>{sub}</div>}
+            <div style={{ fontSize: "0.5625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-neutral-secondary)", marginTop: 3 }}>{label}</div>
+            {sub && <div style={{ fontSize: "0.5625rem", color: "var(--text-neutral-secondary)", marginTop: 2 }}>{sub}</div>}
           </div>
         ))}
       </div>
@@ -646,8 +646,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               {bookedLeads.map((l) => (
                 <div key={l.id} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                   <CalendarCheck style={{ width: 13, height: 13, color: "#818cf8", flexShrink: 0 }} />
-                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>{l.name}</span>
-                  <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>— {l.company}</span>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-neutral-primary)" }}>{l.name}</span>
+                  <span style={{ fontSize: "0.8125rem", color: "var(--text-neutral-secondary)" }}>— {l.company}</span>
                 </div>
               ))}
             </div>
@@ -657,10 +657,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ── Leads list ────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h2 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.01em" }}>
+        <h2 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-neutral-primary)", margin: 0, letterSpacing: "-0.01em" }}>
           Leads
           {leads.length > 0 && (
-            <span style={{ marginLeft: 6, fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>
+            <span style={{ marginLeft: 6, fontSize: "0.75rem", fontWeight: 600, color: "var(--text-neutral-secondary)" }}>
               ({leads.length})
             </span>
           )}
@@ -703,11 +703,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-              <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
+              <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-neutral-primary)" }}>
                 {selectedInView.length} selected
               </span>
               <button onClick={() => setSelected(new Set())} style={{
-                fontSize: "0.75rem", color: "var(--text-muted)", background: "transparent",
+                fontSize: "0.75rem", color: "var(--text-neutral-secondary)", background: "transparent",
                 border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline",
               }}>
                 Clear
