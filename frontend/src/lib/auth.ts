@@ -8,7 +8,7 @@ const MAX_AGE_S   = 60 * 60 * 24 * 7; // 7 days
 
 // ── Credentials (override via env vars in Vercel) ────────────────────────────
 export const VALID_EMAIL    = process.env.AUTH_EMAIL    ?? "ashish@hemut.com";
-export const VALID_PASSWORD = process.env.AUTH_PASSWORD ?? "Florida@7890";
+export const VALID_PASSWORD = process.env.AUTH_PASSWORD ?? "Qwerty@7890";
 
 function getSecret(): string {
   return process.env.AUTH_SECRET ?? "pounce-auth-secret-change-in-prod-2024";

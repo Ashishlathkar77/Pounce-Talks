@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, FormEvent, Suspense } from "react";
+import { useState, FormEvent, Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+// ── Cat mark ──────────────────────────────────────────────────────────────────
 function CatMark({ size = 48, color = "currentColor" }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 22 22" fill="none"
@@ -21,35 +22,91 @@ function CatMark({ size = 48, color = "currentColor" }: { size?: number; color?:
   );
 }
 
+// ── Left panel stat ───────────────────────────────────────────────────────────
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <span style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.04em" }}>
         {value}
       </span>
-      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: 500, letterSpacing: "0.02em", textTransform: "uppercase" }}>
+      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500,
+        letterSpacing: "0.06em", textTransform: "uppercase" }}>
         {label}
       </span>
     </div>
   );
 }
 
-function LoginForm() {
+// ── Blinking cursor ───────────────────────────────────────────────────────────
+function Cursor() {
+  const [vis, setVis] = useState(true);
+  useEffect(() => {
+    const t = setInterval(() => setVis((v) => !v), 530);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <span style={{
+      display: "inline-block", width: 8, height: 15,
+      background: vis ? "#4ade80" : "transparent",
+      verticalAlign: "middle", marginLeft: 1,
+      transition: "background 0.05s",
+    }} />
+  );
+}
+
+// ── Typewriter line ───────────────────────────────────────────────────────────
+function TypeLine({ text, delay = 0, color = "#4ade80" }: { text: string; delay?: number; color?: string }) {
+  const [shown, setShown] = useState("");
+  useEffect(() => {
+    let i = 0;
+    const t = setTimeout(() => {
+      const iv = setInterval(() => {
+        i++;
+        setShown(text.slice(0, i));
+        if (i >= text.length) clearInterval(iv);
+      }, 28);
+      return () => clearInterval(iv);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [text, delay]);
+  return <span style={{ color }}>{shown}</span>;
+}
+
+// ── Terminal login form ───────────────────────────────────────────────────────
+function TerminalForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const next         = searchParams.get("next") || "/campaigns";
 
-  const [tab,      setTab]      = useState<"login" | "signup">("login");
+  const [mode,     setMode]     = useState<"login" | "signup">("login");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
-  const [focused,  setFocused]  = useState<string | null>(null);
+  const [authLines, setAuthLines] = useState<string[]>([]);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Courier New', monospace";
+  const GREEN = "#4ade80";
+  const DIM   = "rgba(74,222,128,0.4)";
+  const RED   = "#f87171";
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setError("");
+    setAuthLines([]);
     setLoading(true);
+
+    const lines = [
+      "Connecting to pounce-auth.sdr...",
+      "Verifying identity...",
+      "Checking workspace permissions...",
+    ];
+    for (let i = 0; i < lines.length; i++) {
+      await new Promise((r) => setTimeout(r, 340));
+      setAuthLines((prev) => [...prev, lines[i]]);
+    }
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -57,13 +114,17 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
+        setAuthLines((prev) => [...prev, "✓ Authenticated. Loading workspace..."]);
+        await new Promise((r) => setTimeout(r, 500));
         router.push(next);
       } else {
         const { error: msg } = await res.json().catch(() => ({}));
-        setError(msg || "Invalid email or password.");
+        setAuthLines([]);
+        setError(msg || "Authentication failed. Check credentials and retry.");
       }
     } catch {
-      setError("Network error — try again.");
+      setAuthLines([]);
+      setError("Connection refused. Check network and retry.");
     } finally {
       setLoading(false);
     }
@@ -71,325 +132,384 @@ function LoginForm() {
 
   function handleSignup(e: FormEvent) {
     e.preventDefault();
-    setError("Pounce is invite-only. Reach out to get access.");
+    setError("Access is invite-only. Send a request to team@pounce.ai");
   }
 
-  const inputStyle = (name: string) => ({
-    width: "100%",
-    padding: "11px 14px",
-    borderRadius: 10,
-    border: `1.5px solid ${focused === name ? "#a78bfa" : "#e4e4e7"}`,
-    fontSize: 14,
+  const inputBase: React.CSSProperties = {
+    background: "transparent",
+    border: "none",
     outline: "none",
-    fontFamily: "inherit",
-    boxSizing: "border-box" as const,
-    transition: "border-color 0.15s, box-shadow 0.15s",
-    color: "#09090b",
-    background: "#fff",
-    boxShadow: focused === name ? "0 0 0 3px rgba(167,139,250,0.12)" : "none",
-  });
+    color: GREEN,
+    fontFamily: MONO,
+    fontSize: 13,
+    flex: 1,
+    caretColor: GREEN,
+    letterSpacing: "0.02em",
+    padding: 0,
+  };
 
   return (
-    <form onSubmit={tab === "login" ? handleLogin : handleSignup} style={{ width: "100%" }}>
-      {/* Tabs */}
+    <div style={{ fontFamily: MONO }}>
+      {/* Mode toggle — terminal style */}
       <div style={{
-        display: "flex", borderRadius: 12, background: "#f4f4f5",
-        padding: 3, marginBottom: 28, gap: 2,
+        display: "flex", gap: 0,
+        borderBottom: `1px solid rgba(74,222,128,0.15)`,
+        marginBottom: 20,
       }}>
-        {(["login", "signup"] as const).map((t) => (
-          <button key={t} type="button"
-            onClick={() => { setTab(t); setError(""); }}
+        {(["login", "signup"] as const).map((m, i) => (
+          <button key={m} type="button"
+            onClick={() => { setMode(m); setError(""); setAuthLines([]); }}
             style={{
-              flex: 1, padding: "8px 0", borderRadius: 9, border: "none",
-              cursor: "pointer", fontSize: 13, fontWeight: 600,
-              transition: "all 0.18s",
-              background: tab === t ? "#fff" : "transparent",
-              color: tab === t ? "#09090b" : "#71717a",
-              boxShadow: tab === t ? "0 1px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" : "none",
-              fontFamily: "inherit",
+              background: "none", border: "none",
+              borderBottom: mode === m ? `2px solid ${GREEN}` : "2px solid transparent",
+              color: mode === m ? GREEN : DIM,
+              fontFamily: MONO, fontSize: 12, fontWeight: 500,
+              padding: "6px 14px 8px",
+              cursor: "pointer", letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              marginBottom: -1,
+              transition: "color 0.15s",
             }}>
-            {t === "login" ? "Sign in" : "Sign up"}
+            {m === "login" ? "$ auth" : "$ request"}
           </button>
         ))}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 6, letterSpacing: "0.01em" }}>
-            Email address
-          </label>
-          <input type="email" value={email} required
-            placeholder="you@company.com"
-            onChange={(e) => setEmail(e.target.value)}
-            onFocus={() => setFocused("email")}
-            onBlur={() => setFocused(null)}
-            style={inputStyle("email")}
-          />
-        </div>
-
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#3f3f46", letterSpacing: "0.01em" }}>
-              Password
-            </label>
-          </div>
-          <input type="password" value={password} required
-            placeholder="••••••••••"
-            onChange={(e) => setPassword(e.target.value)}
-            onFocus={() => setFocused("password")}
-            onBlur={() => setFocused(null)}
-            style={inputStyle("password")}
-          />
-        </div>
-      </div>
-
-      {error && (
+      <form onSubmit={mode === "login" ? handleLogin : handleSignup}>
+        {/* Email row */}
         <div style={{
-          marginTop: 14, padding: "10px 14px", borderRadius: 10,
-          background: "#fff1f2", border: "1px solid #fecdd3",
-          fontSize: 13, color: "#e11d48", lineHeight: 1.4,
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "9px 0",
+          borderBottom: `1px solid rgba(74,222,128,0.08)`,
+          marginBottom: 2,
         }}>
-          {error}
+          <span style={{ color: DIM, fontSize: 12, userSelect: "none", whiteSpace: "nowrap" }}>
+            user@pounce:~$
+          </span>
+          <span style={{ color: DIM, fontSize: 12, userSelect: "none" }}>email</span>
+          <span style={{ color: GREEN, fontSize: 12, userSelect: "none" }}>▸</span>
+          <input
+            ref={emailRef}
+            type="email" value={email} required
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            disabled={loading}
+            style={{
+              ...inputBase,
+              // override autofill yellow
+            }}
+          />
         </div>
-      )}
 
-      <button type="submit" disabled={loading}
-        style={{
-          width: "100%", marginTop: 22, padding: "12px 0", borderRadius: 10,
-          border: "none", cursor: loading ? "not-allowed" : "pointer",
-          background: loading
-            ? "#e4e4e7"
-            : "linear-gradient(135deg, #1c1c1e 0%, #3f3f46 100%)",
-          color: loading ? "#a1a1aa" : "#fff",
-          fontSize: 14, fontWeight: 600, fontFamily: "inherit",
-          letterSpacing: "-0.01em",
-          transition: "opacity 0.15s, transform 0.1s",
-          boxShadow: loading ? "none" : "0 2px 12px rgba(0,0,0,0.18)",
-        }}
-        onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.opacity = "0.88"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-      >
-        {loading ? "Signing in…" : tab === "login" ? "Continue →" : "Request access"}
-      </button>
+        {/* Password row */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "9px 0",
+          borderBottom: `1px solid rgba(74,222,128,0.08)`,
+          marginBottom: 20,
+        }}>
+          <span style={{ color: DIM, fontSize: 12, userSelect: "none", whiteSpace: "nowrap" }}>
+            user@pounce:~$
+          </span>
+          <span style={{ color: DIM, fontSize: 12, userSelect: "none" }}>passwd</span>
+          <span style={{ color: GREEN, fontSize: 12, userSelect: "none" }}>▸</span>
+          <input
+            type="password" value={password} required
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••••"
+            disabled={loading}
+            style={inputBase}
+          />
+        </div>
 
-      <p style={{ textAlign: "center", fontSize: 12, color: "#a1a1aa", marginTop: 18, marginBottom: 0, lineHeight: 1.5 }}>
-        {tab === "login"
-          ? "Invite-only. Don't have access? "
-          : "We'll reach out within 24 hours. "}
-        <a href="mailto:team@pounce.ai"
-          style={{ color: "#71717a", textDecoration: "underline", textUnderlineOffset: 2 }}>
-          {tab === "login" ? "Get in touch" : "Questions?"}
-        </a>
-      </p>
-    </form>
+        {/* Auth log lines */}
+        {authLines.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            {authLines.map((line, i) => (
+              <div key={i} style={{
+                fontSize: 11, fontFamily: MONO,
+                color: line.startsWith("✓") ? GREEN : "rgba(74,222,128,0.55)",
+                padding: "2px 0", letterSpacing: "0.02em",
+              }}>
+                {line.startsWith("✓") ? line : `  ${line}`}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div style={{
+            marginBottom: 14, padding: "8px 12px",
+            background: "rgba(248,113,113,0.06)",
+            border: `1px solid rgba(248,113,113,0.2)`,
+            borderRadius: 6,
+            fontSize: 11, color: RED, fontFamily: MONO, letterSpacing: "0.02em",
+          }}>
+            <span style={{ color: "rgba(248,113,113,0.6)" }}>✗ error: </span>{error}
+          </div>
+        )}
+
+        {/* Submit button */}
+        <button type="submit" disabled={loading}
+          style={{
+            width: "100%", padding: "10px 0",
+            background: loading ? "rgba(74,222,128,0.06)" : "rgba(74,222,128,0.1)",
+            border: `1px solid ${loading ? "rgba(74,222,128,0.15)" : "rgba(74,222,128,0.3)"}`,
+            borderRadius: 6,
+            color: loading ? DIM : GREEN,
+            fontFamily: MONO, fontSize: 12, fontWeight: 600,
+            cursor: loading ? "not-allowed" : "pointer",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase" as const,
+            transition: "all 0.15s",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "rgba(74,222,128,0.16)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = loading
+              ? "rgba(74,222,128,0.06)" : "rgba(74,222,128,0.1)";
+          }}
+        >
+          {loading ? (
+            <>
+              <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span>
+              <span>authenticating</span>
+              <Cursor />
+            </>
+          ) : (
+            <>
+              <span>▸</span>
+              <span>{mode === "login" ? "authenticate" : "send request"}</span>
+            </>
+          )}
+        </button>
+      </form>
+
+      {/* Footer prompt */}
+      <div style={{
+        marginTop: 18, fontSize: 11, color: "rgba(74,222,128,0.25)",
+        fontFamily: MONO, letterSpacing: "0.02em",
+      }}>
+        {mode === "login"
+          ? "# session duration: 7d · workspace: pounce.ai"
+          : "# invite-only · contact team@pounce.ai"}
+      </div>
+    </div>
   );
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
   return (
-    <div style={{
-      display: "flex", minHeight: "100vh",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      WebkitFontSmoothing: "antialiased",
-    }}>
+    <>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        input::placeholder { color: rgba(74,222,128,0.25) !important; }
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0 1000px #0d1117 inset !important;
+          -webkit-text-fill-color: #4ade80 !important;
+          caret-color: #4ade80;
+        }
+      `}</style>
 
-      {/* ── LEFT — dark brand panel ─────────────────────────────────────────── */}
       <div style={{
-        flex: "0 0 52%",
-        background: "#09090b",
-        display: "flex", flexDirection: "column",
-        justifyContent: "space-between",
-        padding: "44px 56px",
-        position: "relative", overflow: "hidden",
+        display: "flex", minHeight: "100vh",
+        fontFamily: "'Inter', -apple-system, sans-serif",
+        WebkitFontSmoothing: "antialiased",
       }}>
 
-        {/* Background glow blobs */}
+        {/* ── LEFT — brand panel ──────────────────────────────────────────── */}
         <div style={{
-          position: "absolute", top: "-10%", left: "-5%",
-          width: 480, height: 480, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "5%", right: "-10%",
-          width: 360, height: 360, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div style={{
-          position: "absolute", top: "40%", right: "20%",
-          width: 200, height: 200, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(250,204,21,0.06) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-
-        {/* Dot grid overlay */}
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          backgroundImage: "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-          maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)",
-        }} />
-
-        {/* Top wordmark */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, position: "relative", zIndex: 1 }}>
-          <CatMark size={26} color="rgba(255,255,255,0.9)" />
-          <span style={{
-            fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.92)",
-            letterSpacing: "-0.04em",
-          }}>
-            Pounce
-          </span>
-        </div>
-
-        {/* Center hero */}
-        <div style={{
-          position: "relative", zIndex: 1,
-          display: "flex", flexDirection: "column", gap: 36,
+          flex: "0 0 52%",
+          background: "#09090b",
+          display: "flex", flexDirection: "column", justifyContent: "space-between",
+          padding: "44px 56px",
+          position: "relative", overflow: "hidden",
         }}>
-          {/* Big cat mark */}
+          {/* Glow blobs */}
           <div style={{
-            width: 72, height: 72, borderRadius: 20,
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            backdropFilter: "blur(8px)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 40px rgba(124,58,237,0.2)",
-          }}>
-            <CatMark size={40} color="rgba(255,255,255,0.85)" />
-          </div>
-
-          <div>
-            <h1 style={{
-              fontSize: 42, fontWeight: 800, color: "#fff",
-              letterSpacing: "-0.05em", lineHeight: 1.08,
-              margin: 0, marginBottom: 16,
-            }}>
-              Your AI SDR,<br />
-              always on<br />
-              <span style={{
-                background: "linear-gradient(90deg, #a78bfa, #34d399)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}>
-                the phone.
-              </span>
-            </h1>
-            <p style={{
-              fontSize: 14, color: "rgba(255,255,255,0.42)",
-              lineHeight: 1.7, maxWidth: 320, margin: 0,
-            }}>
-              Pounce dials your freight prospects, qualifies them live,
-              and books demos — with zero human effort on your end.
-            </p>
-          </div>
-
-          {/* Capability pills */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {[
-              "Live outbound calls",
-              "AI qualification",
-              "Auto demo booking",
-              "CRM sync",
-              "Real-time transcripts",
-              "Freight-native",
-            ].map((pill) => (
-              <span key={pill} style={{
-                fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.55)",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 100, padding: "5px 11px",
-                letterSpacing: "0.01em",
-              }}>
-                {pill}
-              </span>
-            ))}
-          </div>
-
-          {/* Stats */}
+            position: "absolute", top: "-8%", left: "-8%",
+            width: 520, height: 520, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(124,58,237,0.16) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }} />
           <div style={{
-            display: "flex", gap: 36,
-            paddingTop: 28,
-            borderTop: "1px solid rgba(255,255,255,0.07)",
-          }}>
-            <Stat value="< 2s"  label="Time to first word" />
-            <Stat value="3 Qs"  label="To qualify a lead" />
-            <Stat value="24/7"  label="Always dialing" />
+            position: "absolute", bottom: "0%", right: "-12%",
+            width: 400, height: 400, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(16,185,129,0.09) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }} />
+
+          {/* Dot grid */}
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+            maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)",
+          }} />
+
+          {/* Wordmark */}
+          <div style={{ display: "flex", alignItems: "center", gap: 9, position: "relative", zIndex: 1 }}>
+            <CatMark size={26} color="rgba(255,255,255,0.85)" />
+            <span style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "-0.04em" }}>
+              Pounce
+            </span>
           </div>
-        </div>
 
-        {/* Bottom */}
-        <div style={{
-          position: "relative", zIndex: 1,
-          fontSize: 11, color: "rgba(255,255,255,0.2)",
-          letterSpacing: "0.02em",
-        }}>
-          POUNCE · AI OUTBOUND SDR
-        </div>
-      </div>
-
-      {/* ── RIGHT — auth panel ──────────────────────────────────────────────── */}
-      <div style={{
-        flex: 1,
-        background: "#fafafa",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        padding: "48px 40px",
-        position: "relative",
-      }}>
-        {/* Subtle top border */}
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0,
-          height: 1, background: "linear-gradient(90deg, transparent, #e4e4e7 30%, #e4e4e7 70%, transparent)",
-        }} />
-
-        <div style={{ width: "100%", maxWidth: 368 }}>
-          {/* Header */}
-          <div style={{ marginBottom: 32 }}>
+          {/* Hero */}
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 36 }}>
             <div style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              padding: "4px 10px", borderRadius: 100,
-              background: "#f0fdf4", border: "1px solid #bbf7d0",
-              marginBottom: 20,
+              width: 72, height: 72, borderRadius: 20,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 0 48px rgba(124,58,237,0.22)",
             }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#16a34a", letterSpacing: "0.02em" }}>
-                System online
-              </span>
+              <CatMark size={40} color="rgba(255,255,255,0.82)" />
             </div>
-            <h2 style={{
-              fontSize: 24, fontWeight: 700, color: "#09090b",
-              letterSpacing: "-0.04em", margin: 0, marginBottom: 6,
+
+            <div>
+              <h1 style={{
+                fontSize: 44, fontWeight: 800, color: "#fff",
+                letterSpacing: "-0.05em", lineHeight: 1.06,
+                margin: 0, marginBottom: 16,
+              }}>
+                Your AI SDR,<br />always on<br />
+                <span style={{
+                  background: "linear-gradient(90deg, #a78bfa 0%, #34d399 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}>the phone.</span>
+              </h1>
+              <p style={{
+                fontSize: 14, color: "rgba(255,255,255,0.38)",
+                lineHeight: 1.72, maxWidth: 310, margin: 0,
+              }}>
+                Pounce dials freight prospects, qualifies them live, and
+                books demos — no human effort, no missed windows.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+              {["Live outbound calls","AI qualification","Auto demo booking","Freight-native","Real-time transcripts","24 / 7"].map((p) => (
+                <span key={p} style={{
+                  fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.45)",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 100, padding: "5px 11px", letterSpacing: "0.01em",
+                }}>
+                  {p}
+                </span>
+              ))}
+            </div>
+
+            <div style={{
+              display: "flex", gap: 36, paddingTop: 28,
+              borderTop: "1px solid rgba(255,255,255,0.06)",
             }}>
-              Welcome back
-            </h2>
-            <p style={{ fontSize: 13, color: "#a1a1aa", margin: 0 }}>
-              Sign in to your Pounce workspace
-            </p>
+              <Stat value="< 2s"  label="First word" />
+              <Stat value="3 Qs"  label="To qualify" />
+              <Stat value="24/7"  label="Always on" />
+            </div>
           </div>
 
-          {/* Form card */}
+          {/* Footer */}
           <div style={{
-            background: "#fff",
-            borderRadius: 16,
-            border: "1px solid #e4e4e7",
-            padding: "28px 28px 24px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.04)",
+            position: "relative", zIndex: 1,
+            fontSize: 11, color: "rgba(255,255,255,0.18)",
+            letterSpacing: "0.06em", textTransform: "uppercase",
+            fontFamily: "'JetBrains Mono', monospace",
           }}>
-            <Suspense>
-              <LoginForm />
-            </Suspense>
+            POUNCE · AI OUTBOUND SDR
           </div>
+        </div>
 
-          {/* Footer note */}
-          <p style={{
-            textAlign: "center", fontSize: 11, color: "#d4d4d8",
-            marginTop: 24, letterSpacing: "0.01em",
-          }}>
-            Protected workspace · Session expires in 7 days
-          </p>
+        {/* ── RIGHT — terminal panel ──────────────────────────────────────── */}
+        <div style={{
+          flex: 1,
+          background: "#0d1117",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "48px 40px",
+          position: "relative",
+        }}>
+          {/* Subtle scanlines texture */}
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)",
+          }} />
+
+          <div style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: 1 }}>
+            {/* Terminal window */}
+            <div style={{
+              background: "#0a0f14",
+              border: "1px solid rgba(74,222,128,0.12)",
+              borderRadius: 12,
+              overflow: "hidden",
+              boxShadow: "0 0 0 1px rgba(74,222,128,0.04), 0 24px 60px rgba(0,0,0,0.6), 0 0 80px rgba(74,222,128,0.04)",
+            }}>
+              {/* Title bar */}
+              <div style={{
+                background: "#111820",
+                borderBottom: "1px solid rgba(74,222,128,0.08)",
+                padding: "10px 14px",
+                display: "flex", alignItems: "center", gap: 12,
+              }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {["#ff5f57","#febc2e","#28c840"].map((c) => (
+                    <div key={c} style={{ width: 11, height: 11, borderRadius: "50%", background: c, opacity: 0.85 }} />
+                  ))}
+                </div>
+                <span style={{
+                  flex: 1, textAlign: "center",
+                  fontSize: 11, color: "rgba(74,222,128,0.3)",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: "0.04em",
+                }}>
+                  pounce — auth@sdr
+                </span>
+              </div>
+
+              {/* Terminal body */}
+              <div style={{ padding: "22px 24px 26px" }}>
+                {/* Boot header */}
+                <div style={{
+                  fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                  marginBottom: 22,
+                  borderBottom: "1px solid rgba(74,222,128,0.07)",
+                  paddingBottom: 18,
+                }}>
+                  <div style={{ fontSize: 11, color: "rgba(74,222,128,0.6)", lineHeight: 1.8 }}>
+                    <TypeLine text="Pounce SDR  v1.0.0  (stable)" delay={0} color="rgba(74,222,128,0.7)" />
+                    <br />
+                    <TypeLine text="Workspace: pounce.ai  ·  Region: us-east-1" delay={280} color="rgba(74,222,128,0.35)" />
+                    <br />
+                    <TypeLine text="─────────────────────────────────────────" delay={560} color="rgba(74,222,128,0.12)" />
+                  </div>
+                </div>
+
+                <Suspense>
+                  <TerminalForm />
+                </Suspense>
+              </div>
+            </div>
+
+            {/* Below card note */}
+            <div style={{
+              textAlign: "center", marginTop: 20,
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10, color: "rgba(74,222,128,0.18)",
+              letterSpacing: "0.04em",
+            }}>
+              # encrypted session · HMAC-SHA256 · httpOnly cookie
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
