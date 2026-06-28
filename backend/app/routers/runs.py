@@ -89,11 +89,19 @@ async def list_runs(
 
 @router.get("/{session_id}")
 async def get_run(session_id: str, db: AsyncSession = Depends(get_db)):
+    # The runs list returns CallLog.id as the row id, so the detail lookup is
+    # by id first. Fall back to livekit_room_name for older links.
+    import uuid as _uuid
+    cond = CallLog.livekit_room_name == session_id
+    try:
+        cond = CallLog.id == _uuid.UUID(session_id)
+    except (ValueError, AttributeError, TypeError):
+        pass
     result = await db.execute(
         select(CallLog, Lead, Campaign)
         .outerjoin(Lead, CallLog.lead_id == Lead.id)
         .outerjoin(Campaign, CallLog.campaign_id == Campaign.id)
-        .where(CallLog.livekit_room_name == session_id)
+        .where(cond)
     )
     row = result.first()
     if row is None:
