@@ -1,0 +1,129 @@
+{
+  "family": "pounce-livekit-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "2048",
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "executionRoleArn": "arn:aws:iam::869935092934:role/pounce-ecs-task-exec-role",
+  "taskRoleArn": "arn:aws:iam::869935092934:role/pounce-ecs-task-exec-role",
+  "containerDefinitions": [
+    {
+      "name": "pounce-livekit-worker",
+      "image": "869935092934.dkr.ecr.us-east-2.amazonaws.com/pounce-backend:latest",
+      "essential": true,
+      "command": [
+        "python",
+        "agent_worker.py",
+        "start"
+      ],
+      "secrets": [
+        {
+          "name": "CALCOM_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:CALCOM_API_KEY::"
+        },
+        {
+          "name": "CALCOM_EVENT_TYPE_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:CALCOM_EVENT_TYPE_ID::"
+        },
+        {
+          "name": "CARTESIA_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:CARTESIA_API_KEY::"
+        },
+        {
+          "name": "CORS_ORIGINS",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:CORS_ORIGINS::"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:DATABASE_URL::"
+        },
+        {
+          "name": "DEEPGRAM_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:DEEPGRAM_API_KEY::"
+        },
+        {
+          "name": "DEMO_MODE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:DEMO_MODE::"
+        },
+        {
+          "name": "DEMO_PHONE_NUMBER",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:DEMO_PHONE_NUMBER::"
+        },
+        {
+          "name": "ENVIRONMENT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:ENVIRONMENT::"
+        },
+        {
+          "name": "LIVEKIT_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:LIVEKIT_API_KEY::"
+        },
+        {
+          "name": "LIVEKIT_API_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:LIVEKIT_API_SECRET::"
+        },
+        {
+          "name": "LIVEKIT_SIP_OUTBOUND_TRUNK_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:LIVEKIT_SIP_OUTBOUND_TRUNK_ID::"
+        },
+        {
+          "name": "LIVEKIT_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:LIVEKIT_URL::"
+        },
+        {
+          "name": "LLM_MODEL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:LLM_MODEL::"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:LOG_LEVEL::"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:OPENAI_API_KEY::"
+        },
+        {
+          "name": "ORANGE_SLICE_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:ORANGE_SLICE_API_KEY::"
+        },
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:SECRET_KEY::"
+        },
+        {
+          "name": "TTS_PROVIDER",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:TTS_PROVIDER::"
+        },
+        {
+          "name": "TWILIO_ACCOUNT_SID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:TWILIO_ACCOUNT_SID::"
+        },
+        {
+          "name": "TWILIO_AUTH_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:TWILIO_AUTH_TOKEN::"
+        },
+        {
+          "name": "TWILIO_PHONE_NUMBER",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:TWILIO_PHONE_NUMBER::"
+        },
+        {
+          "name": "WEBHOOK_BASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:869935092934:secret:Pounce-Prod-Env-ewPtwi:WEBHOOK_BASE_URL::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pounce-livekit-worker",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
