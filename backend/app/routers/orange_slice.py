@@ -92,8 +92,19 @@ async def find_leads(
 
     log.info("orange_slice_rows_received", count=len(rows))
 
-    # Phone is left as whatever the data source provides (usually blank for
-    # LinkedIn company rows). It is editable in the UI — no demo override.
+    # Enrich each company's phone by scraping its website (Orange Slice has no
+    # phone column). Run concurrently so 10 lookups take ~one timeout, not ten.
+    websites = [(r.get("website") or "").strip() for r in rows]
+    scraped_phones = await asyncio.gather(
+        *(_scrape_phone(w) for w in websites), return_exceptions=True
+    )
+    scraped_phones = [p if isinstance(p, str) else "" for p in scraped_phones]
+    log.info(
+        "orange_slice_phones_enriched",
+        found=sum(1 for p in scraped_phones if p),
+        total=len(scraped_phones),
+    )
+
     created_leads: list[Lead] = []
 
     for i, row in enumerate(rows):
@@ -109,9 +120,8 @@ async def find_leads(
             if website else ""
         )
 
-        # Use the real phone if the data source has one; otherwise leave blank
-        # so the user can edit it inline before firing the call.
-        dial_phone = (row.get("phone") or "").strip()
+        # Real phone scraped from the company website; blank (editable) on a miss.
+        dial_phone = (row.get("phone") or "").strip() or scraped_phones[i]
 
         lead = Lead(
             id=uuid.uuid4(),
@@ -165,6 +175,67 @@ async def find_leads(
 async def preview_sql():
     """Return the ICP SQL that will be sent to Orange Slice — useful for demos."""
     return {"sql": _FREIGHT_SQL}
+
+
+# ── Phone enrichment via company website scrape ───────────────────────────────
+# Orange Slice has no phone column, so we fetch each company's own website and
+# extract the publicly-listed business phone (tel: links first, then visible
+# US-format numbers). Free, no API key. Coverage is partial — sites that don't
+# publish a number return blank and stay editable in the UI.
+
+import re as _re
+
+_TEL_HREF = _re.compile(r'href=["\']tel:([+0-9().\-\s]{7,})["\']', _re.IGNORECASE)
+_US_PHONE = _re.compile(
+    r'(?<!\d)(?:\+?1[\s.\-]?)?\(?([2-9]\d{2})\)?[\s.\-]?(\d{3})[\s.\-]?(\d{4})(?!\d)'
+)
+
+
+def _to_e164(raw: str) -> str | None:
+    """Normalize a messy phone string to +1XXXXXXXXXX (US), or None."""
+    digits = _re.sub(r"\D", "", raw or "")
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    if len(digits) != 10:
+        return None
+    if digits[0] in "01" or digits[3] in "01":   # invalid US area/exchange
+        return None
+    return "+1" + digits
+
+
+async def _scrape_phone(website: str) -> str:
+    """Fetch a company website and return the first plausible US phone (E.164)."""
+    if not website:
+        return ""
+    url = website if website.startswith("http") else f"https://{website}"
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; PounceBot/1.0)"}
+    try:
+        async with httpx.AsyncClient(
+            timeout=6.0, follow_redirects=True, headers=headers
+        ) as client:
+            resp = await client.get(url)
+            html = resp.text or ""
+            # Some sites only show the phone on /contact — try it on a miss.
+            candidates: list[str] = _TEL_HREF.findall(html)
+            if not candidates:
+                candidates = ["".join(m) for m in _US_PHONE.findall(html)]
+            if not candidates:
+                try:
+                    base = str(resp.url).rstrip("/")
+                    c2 = await client.get(f"{base}/contact")
+                    h2 = c2.text or ""
+                    candidates = _TEL_HREF.findall(h2) or [
+                        "".join(m) for m in _US_PHONE.findall(h2)
+                    ]
+                except Exception:
+                    pass
+            for cand in candidates:
+                e164 = _to_e164(cand)
+                if e164:
+                    return e164
+    except Exception as exc:
+        log.debug("phone_scrape_failed", website=website, error=str(exc))
+    return ""
 
 
 # ── Orange Slice HTTP client ───────────────────────────────────────────────────
