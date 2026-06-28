@@ -19,6 +19,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Pounce — AI Outbound SDR",
   description: "We call before they close the tab.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", type: "image/x-icon" },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
