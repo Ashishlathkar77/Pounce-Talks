@@ -703,7 +703,6 @@ async def entrypoint(ctx: JobContext) -> None:
             model="nova-3",
             language="en",
             keyterm=_FREIGHT_KEYTERMS,
-            endpointing=400,   # 400ms baseline; _dictation_mode extends to 1200ms
             api_key=settings.deepgram_api_key,
         ),
         llm=openai.LLM(
