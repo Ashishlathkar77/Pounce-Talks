@@ -195,7 +195,7 @@ export default function LoginPage() {
 
       {/* ── LEFT — dark brand panel ─────────────────────────────────────────── */}
       <div style={{
-        flex: "0 0 52%",
+        flex: "0 0 70%",
         background: "#09090b",
         display: "flex", flexDirection: "column",
         justifyContent: "space-between",
@@ -334,7 +334,7 @@ export default function LoginPage() {
         background: "#fafafa",
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        padding: "48px 40px",
+        padding: "40px 24px",
         position: "relative",
       }}>
         {/* Subtle top border */}
@@ -343,7 +343,7 @@ export default function LoginPage() {
           height: 1, background: "linear-gradient(90deg, transparent, #e4e4e7 30%, #e4e4e7 70%, transparent)",
         }} />
 
-        <div style={{ width: "100%", maxWidth: 368 }}>
+        <div style={{ width: "100%", maxWidth: 380 }}>
           {/* Header */}
           <div style={{ marginBottom: 32 }}>
             <div style={{
