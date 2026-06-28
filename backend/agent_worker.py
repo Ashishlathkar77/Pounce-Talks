@@ -55,8 +55,8 @@ _FREIGHT_KEYTERMS = [
 _BLAKE_VOICE_ID = "a167e0f3-df7e-4d52-a9c3-f949145efdab"
 
 # Pronunciation fix for the brand name — Cartesia inline phonemes: "Hemut" =
-# HAY-mut. Applied as a TTS text transform so the spoken audio is right while
-# the transcript still reads "Hemut".
+# <<ˈheɪ|m|ʌt>> (HAY-mut). Applied as a TTS text transform so the spoken
+# audio is correct while the transcript still reads "Hemut".
 _PRONUNCIATIONS = {"Hemut": "<<ˈheɪ|m|ʌt>>"}
 try:
     from livekit.agents.voice.transcription.text_transforms import replace as _lk_replace
