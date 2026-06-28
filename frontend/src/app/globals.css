@@ -307,3 +307,8 @@ div:focus-visible {
 .hm-table-body .hm-table-cell {
   border-bottom: 1px solid var(--border-neutral-secondary);
 }
+/* Closing bottom line — the DS removes border-bottom from the last row.
+   Override with the same specificity (3 classes) so cascade order wins. */
+.hm-table-body .hm-table-row:last-child .hm-table-cell {
+  border-bottom: 1px solid var(--border-neutral-secondary);
+}

@@ -63,6 +63,18 @@ try:
 except Exception:
     _lk_replace = None
 
+# Backchannel allow-list: single/multi-word acknowledgments that should NEVER
+# be treated as full barge-in turns. When detected, Paul is instructed to
+# continue rather than starting a new response from scratch.
+_BACKCHANNELS = frozenset({
+    "yeah", "yep", "yes", "yup", "sure", "right", "okay", "ok",
+    "go ahead", "go on", "please", "i see", "got it", "uh huh",
+    "mm hmm", "mmhmm", "mhm", "mm-hmm", "uh-huh", "sure thing",
+    "sounds good", "makes sense", "of course", "for sure", "alright",
+    "yeah sure", "yes please", "sure go ahead", "yeah go ahead",
+    "please continue", "keep going", "absolutely", "definitely",
+})
+
 
 # ── Agent class ───────────────────────────────────────────────────────────────
 
@@ -77,6 +89,26 @@ class PounceAgent(Agent):
         self._state = state
         self._t0: float | None = None        # set in entrypoint (call start)
         self._hangup = None                   # set in entrypoint; ends the SIP call
+        self._dictation_mode = False          # True = extended endpointing for email/date
+
+    async def _say_filler(self, text: str) -> None:
+        """Hard-coded hold-line straight to TTS — fires before slow API calls."""
+        try:
+            self.session.say(text, allow_interruptions=True)
+        except Exception as exc:
+            log.debug("filler_say_failed", error=str(exc))
+
+    async def stt_node(self, audio, model_settings):
+        """Extend Deepgram endpointing silence window when expecting email/date input."""
+        if self._dictation_mode:
+            try:
+                import dataclasses as _dc
+                if _dc.is_dataclass(model_settings):
+                    model_settings = _dc.replace(model_settings, endpointing=1200)
+            except Exception:
+                pass
+        async for event in super().stt_node(audio, model_settings):
+            yield event
 
     def _record_tool(self, name: str, args: dict | None = None, output=None) -> None:
         """Append a tool-call marker to the transcript so the Runs view shows
@@ -190,6 +222,7 @@ class PounceAgent(Agent):
         if not ok:
             return f"Cannot book meeting: {reason}."
 
+        await self._say_filler("One sec, let me check what's open around then…")
         slots = await _fetch_calcom_slots(preferred_time, preferred_date)
         self._state._available_slots = slots
         self._record_tool(
@@ -199,10 +232,14 @@ class PounceAgent(Agent):
         )
 
         if not slots:
+            self._dictation_mode = False
             return (
                 f"Hmm, nothing's opening up around {preferred_time or 'then'}. "
                 "Want me to check a different day, or should I have the team email you?"
             )
+
+        # Enter dictation mode — prospect needs to spell out email or confirm a date.
+        self._dictation_mode = True
 
         # If we have a real email on file, fold it into the ask so we don't ask blind.
         email_hint = (
@@ -254,10 +291,12 @@ class PounceAgent(Agent):
         start = chosen.get("start") if chosen else None
         label = chosen.get("label") if chosen else "the time we discussed"
 
+        await self._say_filler("Perfect, booking that now — one second…")
         link = await _create_calcom_booking(
             start=start, email=email, name=self._state.name, company=self._state.company,
         )
 
+        self._dictation_mode = False
         self._state.prospect_email = email
         self._state.agreed_meeting_time = label
         self._state.meeting_link = link or ""
@@ -649,6 +688,7 @@ async def entrypoint(ctx: JobContext) -> None:
             model="nova-3",
             language="en",
             keyterm=_FREIGHT_KEYTERMS,
+            endpointing=400,   # 400ms baseline; _dictation_mode extends to 1200ms
             api_key=settings.deepgram_api_key,
         ),
         llm=openai.LLM(
@@ -670,8 +710,8 @@ async def entrypoint(ctx: JobContext) -> None:
         turn_handling={
             "interruption": {
                 "min_duration": 0.5,
-                "min_words": 2,
-                "false_interruption_timeout": 2.0,
+                "min_words": 2,         # 1-word backchannels ("yeah") don't barge-in
+                "false_interruption_timeout": 3.0,   # up from 2.0 — more resume time
                 "resume_false_interruption": True,
             },
             "preemptive_generation": {"enabled": False},
@@ -729,6 +769,23 @@ async def entrypoint(ctx: JobContext) -> None:
             text = (getattr(item, "text_content", None) or "").strip()
             if role not in ("user", "assistant") or not text:
                 return
+
+            # Backchannel allow-list: if the prospect said a pure acknowledgment,
+            # override the LLM response to continue naturally rather than treating
+            # it as a new topic or question.
+            if role == "user":
+                normalized = text.lower().rstrip(".,!? ")
+                if normalized in _BACKCHANNELS:
+                    session.generate_reply(
+                        instructions=(
+                            "The prospect just gave a brief backchannel (e.g. 'yeah', "
+                            "'right', 'go ahead'). Do NOT ask what they meant. Continue "
+                            "naturally — re-ask your last question or move to the next "
+                            "step in the flow. Keep it short."
+                        )
+                    )
+                    return  # skip transcript for pure backchannels
+
             state.transcript.append({
                 "role": role,
                 "text": text,
