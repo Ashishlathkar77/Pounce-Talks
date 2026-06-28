@@ -193,138 +193,162 @@ export default function LoginPage() {
       WebkitFontSmoothing: "antialiased",
     }}>
 
-      {/* ── LEFT — dark brand panel ─────────────────────────────────────────── */}
+      {/* ── LEFT — research + brand panel ──────────────────────────────────── */}
       <div style={{
         flex: "0 0 70%",
         background: "#09090b",
         display: "flex", flexDirection: "column",
-        justifyContent: "space-between",
-        padding: "44px 56px",
-        position: "relative", overflow: "hidden",
+        padding: "40px 52px",
+        position: "relative", overflowY: "auto",
+        gap: 36,
       }}>
 
-        {/* Background glow blobs */}
-        <div style={{
-          position: "absolute", top: "-10%", left: "-5%",
-          width: 480, height: 480, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "5%", right: "-10%",
-          width: 360, height: 360, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div style={{
-          position: "absolute", top: "40%", right: "20%",
-          width: 200, height: 200, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(250,204,21,0.06) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
+        {/* Glow blobs */}
+        <div style={{ position: "absolute", top: "-8%", left: "-6%", width: 480, height: 480, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.14) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: "10%", right: "-8%", width: 340, height: 340, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px)", backgroundSize: "28px 28px", maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)" }} />
 
-        {/* Dot grid overlay */}
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          backgroundImage: "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-          maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)",
-        }} />
-
-        {/* Top wordmark */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, position: "relative", zIndex: 1 }}>
+        {/* Wordmark */}
+        <div style={{ display: "flex", alignItems: "center", gap: 9, position: "relative", zIndex: 1, flexShrink: 0 }}>
           <CatMark size={26} color="rgba(255,255,255,0.9)" />
-          <span style={{
-            fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.92)",
-            letterSpacing: "-0.04em",
-          }}>
-            Pounce
-          </span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.92)", letterSpacing: "-0.04em" }}>Pounce</span>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginLeft: 6 }}>AI Outbound SDR</span>
         </div>
 
-        {/* Center hero */}
-        <div style={{
-          position: "relative", zIndex: 1,
-          display: "flex", flexDirection: "column", gap: 36,
-        }}>
-          {/* Big cat mark */}
+        {/* ── PITCH COPY ── */}
+        <div style={{ position: "relative", zIndex: 1, flexShrink: 0 }}>
           <div style={{
-            width: 72, height: 72, borderRadius: 20,
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            backdropFilter: "blur(8px)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 40px rgba(124,58,237,0.2)",
+            borderLeft: "2px solid rgba(167,139,250,0.5)",
+            paddingLeft: 18,
           }}>
-            <CatMark size={40} color="rgba(255,255,255,0.85)" />
-          </div>
-
-          <div>
-            <h1 style={{
-              fontSize: 42, fontWeight: 800, color: "#fff",
-              letterSpacing: "-0.05em", lineHeight: 1.08,
-              margin: 0, marginBottom: 16,
-            }}>
-              Your AI SDR,<br />
-              always on<br />
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.75, color: "rgba(255,255,255,0.75)", fontWeight: 400 }}>
+              The average company takes{" "}
+              <span style={{ color: "#f87171", fontWeight: 700 }}>42 hours</span>{" "}
+              to respond to a web lead.{" "}
+              <span style={{ color: "rgba(255,255,255,0.4)" }}>23% never respond at all.</span>{" "}
+              Companies that reach out the same day are{" "}
+              <span style={{ color: "#4ade80", fontWeight: 700 }}>7× more likely</span>{" "}
+              to qualify the lead.
+            </p>
+            <p style={{ margin: "14px 0 0", fontSize: 15, lineHeight: 1.75, color: "rgba(255,255,255,0.75)" }}>
               <span style={{
                 background: "linear-gradient(90deg, #a78bfa, #34d399)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                fontWeight: 700,
               }}>
-                the phone.
+                Pounce reaches out and books actual meetings same day.
+              </span>{" "}
+              <span style={{ color: "rgba(255,255,255,0.35)" }}>
+                A freight SDR costs $100–145K/yr fully loaded. We do it at infrastructure cost — ~$0.10/min.
               </span>
-            </h1>
-            <p style={{
-              fontSize: 14, color: "rgba(255,255,255,0.42)",
-              lineHeight: 1.7, maxWidth: 320, margin: 0,
-            }}>
-              Pounce dials your freight prospects, qualifies them live,
-              and books demos — with zero human effort on your end.
             </p>
-          </div>
-
-          {/* Capability pills */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {[
-              "Live outbound calls",
-              "AI qualification",
-              "Auto demo booking",
-              "CRM sync",
-              "Real-time transcripts",
-              "Freight-native",
-            ].map((pill) => (
-              <span key={pill} style={{
-                fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.55)",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 100, padding: "5px 11px",
-                letterSpacing: "0.01em",
-              }}>
-                {pill}
-              </span>
-            ))}
-          </div>
-
-          {/* Stats */}
-          <div style={{
-            display: "flex", gap: 36,
-            paddingTop: 28,
-            borderTop: "1px solid rgba(255,255,255,0.07)",
-          }}>
-            <Stat value="< 2s"  label="Time to first word" />
-            <Stat value="3 Qs"  label="To qualify a lead" />
-            <Stat value="24/7"  label="Always dialing" />
           </div>
         </div>
 
-        {/* Bottom */}
-        <div style={{
-          position: "relative", zIndex: 1,
-          fontSize: 11, color: "rgba(255,255,255,0.2)",
-          letterSpacing: "0.02em",
-        }}>
-          POUNCE · AI OUTBOUND SDR
+        {/* ── RESEARCH TABLE ── */}
+        <div style={{ position: "relative", zIndex: 1, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              The Data
+            </span>
+            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
+            {/* Header */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "1fr 120px 1fr",
+              background: "rgba(255,255,255,0.04)",
+              padding: "9px 16px", gap: 12,
+            }}>
+              {["Claim", "Number", "Source"].map(h => (
+                <span key={h} style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em", textTransform: "uppercase" }}>{h}</span>
+              ))}
+            </div>
+
+            {[
+              { claim: "Avg lead response time", num: "42 hours", src: "HBR 2011, Oldroyd et al.", numColor: "#f87171" },
+              { claim: "Companies that never respond to web leads", num: "23%", src: "Same HBR study", numColor: "#fb923c" },
+              { claim: "Response same day → qualification odds", num: "7× more likely", src: "Same HBR study", numColor: "#4ade80" },
+              { claim: "Fully-loaded human SDR cost", num: "$100–145K/yr", src: "Glassdoor · LeadGenius · Salary.com", numColor: "#f87171" },
+              { claim: "Human SDR hourly cost", num: "~$61.50/hr", src: "Derived: $128K ÷ 2,080 hrs", numColor: "#fb923c" },
+              { claim: "AI voice infrastructure cost", num: "$0.07–0.25/min", src: "Vapi · Bland · Retell (vendor-stated)", numColor: "#4ade80" },
+            ].map((row, i) => (
+              <div key={i} style={{
+                display: "grid", gridTemplateColumns: "1fr 120px 1fr",
+                padding: "10px 16px", gap: 12,
+                background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
+                borderTop: "1px solid rgba(255,255,255,0.04)",
+              }}>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.4 }}>{row.claim}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: row.numColor, letterSpacing: "-0.01em" }}>{row.num}</span>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", lineHeight: 1.4 }}>{row.src}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── COMPETITIVE GAP ── */}
+        <div style={{ position: "relative", zIndex: 1, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              The Competitive Gap
+            </span>
+            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.04em" }}>Verified</span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { name: "HappyRobot", note: "$44M Series B", desc: "Inbound carrier calls only — no outbound shipper sales", tag: "inbound only" },
+              { name: "Parade.ai CoDriver", note: "Apr 2025", desc: "Inbound capacity management only", tag: "inbound only" },
+              { name: "11x · Artisan · AiSDR", note: "Horizontal", desc: "Email SDR only — weak voice, zero freight domain knowledge", tag: "no voice" },
+            ].map((c) => (
+              <div key={c.name} style={{
+                display: "flex", alignItems: "flex-start", gap: 14,
+                padding: "11px 14px", borderRadius: 8,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>{c.name}</span>
+                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>{c.note}</span>
+                  </div>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>{c.desc}</span>
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, color: "#fb923c",
+                  background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.2)",
+                  borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap", flexShrink: 0, marginTop: 1,
+                }}>{c.tag}</span>
+              </div>
+            ))}
+
+            {/* The gap */}
+            <div style={{
+              padding: "12px 14px", borderRadius: 8,
+              background: "rgba(167,139,250,0.07)",
+              border: "1px solid rgba(167,139,250,0.2)",
+              display: "flex", alignItems: "flex-start", gap: 10,
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#a78bfa", flexShrink: 0, marginTop: 5 }} />
+              <div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#a78bfa", display: "block", marginBottom: 3 }}>
+                  The unoccupied space
+                </span>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
+                  Outbound freight broker → shipper prospecting with load board signal enrichment.
+                  That gap is real, unoccupied, and it&apos;s exactly what Pounce is built for.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom stamp */}
+        <div style={{ position: "relative", zIndex: 1, fontSize: 10, color: "rgba(255,255,255,0.15)", letterSpacing: "0.06em", marginTop: "auto", paddingTop: 8 }}>
+          POUNCE · AI OUTBOUND SDR · ALL FIGURES INDEPENDENTLY SOURCED
         </div>
       </div>
 
