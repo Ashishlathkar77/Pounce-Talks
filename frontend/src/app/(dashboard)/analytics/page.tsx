@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import {
@@ -942,7 +942,7 @@ const TAB_ITEMS: TabItem[] = [
 
 /* ── Page ────────────────────────────────────────────────────────────── */
 
-export default function AnalyticsPage() {
+function AnalyticsPage() {
   const { selectedAgentType, selectedAgentName } = useAgentSelectorStore();
   const [timeRange, setTimeRange] = useState<TimeRange>("7 days");
 
@@ -1296,5 +1296,13 @@ export default function AnalyticsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AnalyticsPageWrapper() {
+  return (
+    <Suspense>
+      <AnalyticsPage />
+    </Suspense>
   );
 }
