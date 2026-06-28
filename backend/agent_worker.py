@@ -719,7 +719,7 @@ async def entrypoint(ctx: JobContext) -> None:
             model="sonic-3",
             voice=_BLAKE_VOICE_ID,
             language=None,          # auto-detect from LLM text
-            speed=1.0,              # neutral speed — dry humor lands better at pace
+            speed=0.98,             # slightly below neutral — clearer, less rushed
             emotion=["positivity:medium"],
             text_pacing=True,       # keep Cartesia's natural phrase pauses
             api_key=settings.cartesia_api_key,
