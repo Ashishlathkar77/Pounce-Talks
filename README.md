@@ -1,47 +1,62 @@
-# Pounce — AI Outbound SDR
+# Pounce
 
-**Pounce** is an open-source AI voice agent that calls leads, qualifies them live on the phone, and books demos — no human SDR required.
+**Your leads get a real phone call. You get a booked demo.**
 
-Built for the [YC X25 Hackathon](https://www.ycombinator.com/) by the [Hemut](https://hemut.com) team.
+Most "AI outreach" tools send another email into an already-ignored inbox. Pounce picks up the phone — it calls your prospects, has a live two-way voice conversation, qualifies them on the spot, and books the meeting before the call ends. No human needed at any step.
+
+Built by [Ashish Lathkar](https://github.com/Ashishlathkar77) · YC X25
 
 ---
 
-## What it does
+## The difference
 
-- Dials prospects via SIP outbound using LiveKit
-- Runs a real two-way voice conversation (STT → LLM → TTS pipeline)
-- Asks 3 discovery questions, scores qualification, and delivers a personalized pitch
-- Books a demo on Cal.com and sends the calendar invite — all during the call
-- Captures the full transcript and outcome to a dashboard in real time
+| Everyone else | Pounce |
+|---|---|
+| Email sequences, LinkedIn DMs | Real outbound phone call |
+| Prospect reads (or ignores) a message | Prospect has a live conversation |
+| You follow up manually | Demo is already on the calendar |
+| Async, days-long back-and-forth | Qualified + booked in under 5 minutes |
+
+The entire funnel — **dial → qualify → pitch → book** — happens in a single call. No SDR. No BDR. No follow-up sequence.
 
 ## Demo
 
 Live at **[pounce.hemut.com](https://pounce.hemut.com)**
 
-## Architecture
+## How it works
 
 ```
-┌─────────────┐     SIP outbound      ┌──────────────────┐
-│  Campaign   │ ──── LiveKit room ───▶ │  Paul (LK Agent) │
-│  dashboard  │                        │                  │
-│  (Next.js)  │◀── webhook / SSE ───── │  STT  LLM  TTS  │
-└─────────────┘                        │  DG   GPT  CAR  │
-       │                               └────────┬─────────┘
-       │ REST                                   │ Cal.com API
-       ▼                                        ▼
-┌─────────────┐                        ┌──────────────────┐
-│  FastAPI    │                        │  Calendar invite │
-│  + Postgres │                        │  + booking link  │
-└─────────────┘                        └──────────────────┘
+┌─────────────┐     SIP outbound      ┌──────────────────────┐
+│  Campaign   │ ──── LiveKit room ───▶ │  Paul (voice agent)  │
+│  dashboard  │                        │                      │
+│  (Next.js)  │◀── webhook / SSE ───── │  Deepgram  GPT-4.1  │
+└─────────────┘                        │  Cartesia  Cal.com  │
+       │                               └──────────┬───────────┘
+       │ REST                                     │
+       ▼                                          ▼
+┌─────────────┐                        ┌──────────────────────┐
+│  FastAPI    │                        │  Calendar invite     │
+│  + Postgres │                        │  sent automatically  │
+└─────────────┘                        └──────────────────────┘
 ```
+
+1. You upload a list of leads and start a campaign
+2. Pounce dials each one via SIP outbound
+3. Paul (the voice agent) runs a live discovery conversation — team size, current tooling, decision-maker
+4. Qualifies the lead in real time using a scored rubric
+5. Delivers a personalized pitch based on what they just said
+6. Books a demo slot on Cal.com and sends the calendar invite
+7. Full transcript + outcome lands in your Runs dashboard instantly
+
+## Tech stack
 
 | Layer | Technology |
 |---|---|
 | Voice agent | [LiveKit Agents 1.6](https://docs.livekit.io/agents/) |
-| STT | [Deepgram nova-3](https://deepgram.com/) with freight keyterm boosting |
+| STT | [Deepgram nova-3](https://deepgram.com/) — keyterm boosting, dynamic endpointing |
 | LLM | [OpenAI gpt-4.1](https://openai.com/) @ temperature 0.3 |
 | TTS | [Cartesia Sonic-3](https://cartesia.ai/) — Blake voice, speed 0.96 |
-| Frontend | [Next.js 15](https://nextjs.org/) App Router + Hemut Design System |
+| Frontend | [Next.js 15](https://nextjs.org/) App Router |
 | Backend API | [FastAPI](https://fastapi.tiangolo.com/) + SQLAlchemy + Postgres |
 | Scheduling | [Cal.com API v2](https://cal.com/docs/api-reference/v2) |
 | Infra | AWS ECS Fargate ARM64, Vercel (frontend), GitHub Actions OIDC |
@@ -51,7 +66,7 @@ Live at **[pounce.hemut.com](https://pounce.hemut.com)**
 ```
 pounce/
 ├── backend/
-│   ├── agent_worker.py      # LiveKit agent — Paul SDR (voice pipeline)
+│   ├── agent_worker.py      # LiveKit agent — Paul (voice pipeline)
 │   ├── main.py              # FastAPI app (campaigns, leads, webhooks)
 │   ├── app/
 │   │   ├── agent/
@@ -76,11 +91,10 @@ pounce/
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 20+
-- A [LiveKit](https://livekit.io/) project (Cloud or self-hosted)
-- [Deepgram](https://deepgram.com/), [OpenAI](https://platform.openai.com/), [Cartesia](https://cartesia.ai/) API keys
-- [Cal.com](https://cal.com/) account with API key + event type ID
+- Python 3.11+, Node.js 20+
+- [LiveKit](https://livekit.io/) project (Cloud or self-hosted)
+- API keys: [Deepgram](https://deepgram.com/), [OpenAI](https://platform.openai.com/), [Cartesia](https://cartesia.ai/)
+- [Cal.com](https://cal.com/) account + event type ID
 - Postgres database
 
 ### Backend
@@ -92,26 +106,22 @@ pip install -r requirements.txt
 
 cp .env.example .env   # fill in your keys
 
-# Start the FastAPI server
-uvicorn main:app --reload --port 8000
-
-# Start the LiveKit voice agent worker (separate terminal)
-python agent_worker.py dev
+uvicorn main:app --reload --port 8000      # FastAPI
+python agent_worker.py dev                  # LiveKit voice agent
 ```
 
-**Required env vars** (see `.env.example`):
+Key env vars:
 
 ```
 LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=...
-LIVEKIT_API_SECRET=...
-DEEPGRAM_API_KEY=...
-OPENAI_API_KEY=...
-CARTESIA_API_KEY=...
-CALCOM_API_KEY=...
-CALCOM_EVENT_TYPE_ID=...
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+DEEPGRAM_API_KEY=
+OPENAI_API_KEY=
+CARTESIA_API_KEY=
+CALCOM_API_KEY=
+CALCOM_EVENT_TYPE_ID=
 DATABASE_URL=postgresql+asyncpg://...
-WEBHOOK_BASE_URL=http://localhost:8000
 ```
 
 ### Frontend
@@ -119,32 +129,25 @@ WEBHOOK_BASE_URL=http://localhost:8000
 ```bash
 cd frontend
 npm install
-cp .env.local.example .env.local   # set NEXT_PUBLIC_API_URL
-
 npm run dev   # http://localhost:3000
 ```
 
-Default login: set `AUTH_EMAIL` / `AUTH_PASSWORD` in `.env.local` (fallback: `ashish@hemut.com` / `Qwerty@7890` — **change before deploying**).
+Set `AUTH_EMAIL` / `AUTH_PASSWORD` in `frontend/.env.local` before deploying.
 
-## Voice agent highlights
+## Voice agent internals
 
-The agent (`backend/agent_worker.py`) uses several techniques from recent voice AI research:
+Four techniques from recent research that meaningfully improve call quality:
 
-- **Deterministic pre-tool fillers** — hard-coded `session.say()` fires before slow Cal.com API calls so there's zero dead air
-- **Backchannel allow-list** — 30-entry frozenset detects pure acknowledgments ("yeah", "right", "go ahead") and instructs the LLM to continue rather than start a new response
-- **Dynamic endpointing** — Deepgram silence window extends to 1200ms when the prospect is expected to spell an email address
-- **Structured prompt with example transcripts** — 3 full realistic call examples embedded in the system prompt (clean booking, objection recovery, graceful no)
+- **Deterministic pre-tool fillers** — hard-coded `session.say()` fires before every Cal.com API call so there's zero dead air while the network round-trip happens
+- **Backchannel allow-list** — 30-entry frozenset catches pure acknowledgments ("yeah", "right", "go ahead") and instructs the LLM to continue naturally instead of restarting its response
+- **Dynamic endpointing** — Deepgram silence window extends from 400ms to 1200ms when the prospect is expected to spell an email address
+- **Prompt with example transcripts** — 3 full realistic call examples embedded in the system prompt (clean booking, objection recovery, graceful no)
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Ways to contribute:**
-
-- Improve the qualification flow or system prompt
-- Add new integrations (CRMs, other calendar providers, different TTS voices)
-- Frontend improvements (analytics, live call monitoring)
-- Infrastructure (multi-tenant support, call queue management)
+Good places to start: new CRM integrations (HubSpot, Salesforce), additional TTS voices, language support, campaign analytics.
 
 ## License
 
@@ -152,10 +155,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Acknowledgements
 
-Built with [LiveKit](https://livekit.io/), [Deepgram](https://deepgram.com/), [Cartesia](https://cartesia.ai/), [OpenAI](https://openai.com/), and [Cal.com](https://cal.com/).
+[LiveKit](https://livekit.io/) · [Deepgram](https://deepgram.com/) · [Cartesia](https://cartesia.ai/) · [OpenAI](https://openai.com/) · [Cal.com](https://cal.com/)
 
-Research references: ConvFill (arXiv:2511.07397), LTS-VoiceAgent (arXiv:2601.19952), τ-Voice (arXiv:2603.13686).
-
----
-
-*Made by [Hemut](https://hemut.com) · YC X25*
+Research: ConvFill (arXiv:2511.07397) · LTS-VoiceAgent (arXiv:2601.19952) · τ-Voice (arXiv:2603.13686)
