@@ -1,0 +1,90 @@
+name: Deploy backend to ECS
+
+# Builds the backend image (ARM64) and rolls both ECS services:
+#   - pounce-backend-service   (FastAPI API, behind the ALB)
+#   - pounce-livekit-worker    (LiveKit voice agent)
+# Keyless auth via GitHub OIDC -> arn:aws:iam::869935092934:role/pounce-github-actions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "deploy/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  AWS_ACCOUNT: "869935092934"
+  ECR_REPO: pounce-backend
+  CLUSTER: pounce-ecs
+
+jobs:
+  deploy:
+    # Native ARM64 runner -> image matches the Fargate ARM64 task defs (no QEMU).
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::869935092934:role/pounce-github-actions
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          IMAGE="$REGISTRY/$ECR_REPO"
+          TAG="${GITHUB_SHA::8}"
+          docker buildx build \
+            --platform linux/arm64 \
+            --cache-from type=gha --cache-to type=gha,mode=max \
+            -t "$IMAGE:$TAG" -t "$IMAGE:latest" \
+            --push backend
+          echo "image=$IMAGE:$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Register task defs & roll services
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          set -euo pipefail
+          deploy_one() {
+            local family="$1" file="$2" service="$3"
+            # Inject the freshly-built image into the committed task def, then register.
+            jq --arg img "$IMAGE" '.containerDefinitions[0].image = $img' "$file" > /tmp/$family.json
+            local rev
+            rev=$(aws ecs register-task-definition \
+                    --cli-input-json file:///tmp/$family.json \
+                    --region "$AWS_REGION" \
+                    --query 'taskDefinition.taskDefinitionArn' --output text)
+            echo "Registered $rev"
+            aws ecs update-service \
+              --cluster "$CLUSTER" --service "$service" \
+              --task-definition "$rev" \
+              --region "$AWS_REGION" --query 'service.serviceName' --output text
+          }
+          deploy_one pounce-backend         deploy/pounce-backend.taskdef.json         pounce-backend-service
+          deploy_one pounce-livekit-worker  deploy/pounce-livekit-worker.taskdef.json  pounce-livekit-worker
+
+      - name: Wait for services to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services pounce-backend-service pounce-livekit-worker \
+            --region "$AWS_REGION"
+          echo "✅ Both services stable on the new image."
